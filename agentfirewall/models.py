@@ -61,6 +61,9 @@ class Finding:
     line: int = 0
     evidence: str = ""
     remediation: str = ""
+    #: External framework references this detection maps to, e.g.
+    #: ("OWASP-LLM01", "MITRE-ATLAS:AML.T0051", "MCP:tool-poisoning").
+    references: tuple[str, ...] = ()
 
     def location(self) -> str:
         if self.path and self.line:
@@ -78,6 +81,7 @@ class Finding:
             "line": self.line,
             "evidence": self.evidence,
             "remediation": self.remediation,
+            "references": list(self.references),
         }
 
 
@@ -89,6 +93,7 @@ class ScannedFile:
     text: str
     is_binary: bool = False
     role: str = "file"  # e.g. "manifest", "script", "doc", "config"
+    sha256: str = ""  # content hash, used for baseline/rug-pull diffing
 
     @property
     def lines(self) -> list[str]:

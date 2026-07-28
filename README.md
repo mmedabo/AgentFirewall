@@ -28,14 +28,25 @@ too high — with a clear, auditable report of exactly why.
 | Category | Examples |
 |---|---|
 | 🔑 **Secret & credential theft** | reading `~/.ssh`, `~/.aws/credentials`, `.env`, dumping the environment, targeting `ANTHROPIC_API_KEY` / `GITHUB_TOKEN` |
+| 🎫 **Embedded credentials** | private keys, AWS `AKIA…`, GitHub `ghp_…`, OpenAI/Anthropic `sk-…`, Slack tokens shipped *inside* the artifact |
 | 📡 **Data exfiltration** | uploads to pastebin/`webhook.site`/Discord webhooks, raw-IP egress, reverse shells, DNS-tunnel exfiltration |
 | 🧬 **Obfuscation & dynamic exec** | `curl … \| bash`, `base64 -d \| sh`, `eval`/`exec` on runtime strings, hex-encoded payloads |
+| 🥫 **Unsafe deserialization** | `pickle.load`, `torch.load`, unsafe `yaml.load`, bundled `.pkl`/`.pt` weight files (model poisoning) |
 | 💣 **Destructive actions** | `rm -rf ~/`, `mkfs`, fork bombs, `chmod 777`, disabling firewalls/TLS, crypto-miners, cron/autostart persistence |
+| 🕵️ **Anti-forensics** | clearing shell history, deleting `/var/log`, `unset HISTFILE` |
 | 🧠 **Prompt injection** | "ignore previous instructions", "do not tell the user", "you are now in developer mode", instructions to exfiltrate secrets |
+| 🪝 **Tool poisoning** | hidden directives inside MCP/tool **descriptions**, MCP `env` secrets, auto-approve flags |
+| 🧬 **Memory / context poisoning** | writes to `CLAUDE.md`, `.cursorrules`, MCP config and other files other agents auto-load |
 | 👻 **Hidden content** | zero-width characters, bidirectional-override tricks, invisible Unicode-Tag instructions, high-entropy packed blobs |
 | 🎛️ **Permission overreach** | skills/agents granting themselves `tools: "*"`, unrestricted `Bash(*)`, silent install hooks |
+| 🎭 **Typosquatting** | homoglyph/look-alike names, one-edit near-misses of popular packages |
+| 🔁 **Rug pulls** *(stateful)* | a pinned artifact whose files, tools, permissions or tool descriptions **silently change** in a later update |
 
-Run `afw rules` to see every detection with its ID and severity.
+Every detection is mapped to an industry framework — **OWASP Top 10 for LLM Apps**,
+**OWASP Top 10 for Agentic Apps**, **MITRE ATLAS**, **MCP threat research** and
+**SLSA/supply-chain**. Run `afw rules` to see each detection with its ID, severity,
+and framework coverage. See [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) for the
+full mapping and [`docs/ROADMAP.md`](docs/ROADMAP.md) for where this is going.
 
 ---
 
@@ -99,11 +110,27 @@ afw watch ~/Downloads/agents
 afw verify ./my-published-skill --format sarif > results.sarif
 ```
 
+**Pin a trusted version, then catch rug pulls on every update:**
+
+```bash
+afw pin ./some-skill                       # writes ./some-skill/afw.lock
+# ... later, after the author ships an update ...
+afw verify ./some-skill --baseline ./some-skill/afw.lock
+# ✗ CRITICAL  Tool grant added since baseline   [AFW-DRIFT-010]
+#   HIGH      Baselined file changed            [AFW-DRIFT-001]
+```
+
+A previously-clean tool whose **permissions or description silently changed** is,
+by itself, the alarm — even if the new code contains no known-bad signature. This
+is how AgentFirewall catches the attacks static scanning can't: rug pulls and
+insider updates (like the Postmark BCC incident) that ship clean and mutate later.
+
 Try it right now against the bundled examples:
 
 ```bash
 afw scan examples/safe-skill        # ✓ ALLOW
 afw scan examples/malicious-skill   # ✗ BLOCK  (a catalogue of bad behaviour)
+afw scan examples/poisoned-mcp      # ✗ BLOCK  (MCP tool poisoning + env secrets)
 ```
 
 ---
@@ -115,11 +142,13 @@ afw scan examples/malicious-skill   # ✗ BLOCK  (a catalogue of bad behaviour)
 | `afw scan <path>...` | Inspect artifacts and print a report. Exit code reflects the worst verdict. |
 | `afw verify <path>...` | CI gate. Exit `2` if any artifact is **BLOCK** (`--fail-on-warn` to also fail on warnings). |
 | `afw install <path> --to <dir>` | Pre-check, then copy into place **only if it passes** the firewall. |
+| `afw pin <path>` | Record a trusted baseline (`afw.lock`) for later rug-pull detection. |
 | `afw watch <dir>` | Poll a directory and scan new/modified artifacts as they appear. |
-| `afw rules` | List every detection with ID, severity, and category. |
+| `afw rules` | List every detection with ID, severity, category, and framework coverage. |
 
 Common flags: `--format text|json|sarif`, `--policy <file>`, `--strict`,
-`--fail-on <SEVERITY>`, `--ignore <RULE_ID>`, `--no-color`, `-v/--verbose`.
+`--fail-on <SEVERITY>`, `--ignore <RULE_ID>`, `--baseline <lock>` (on
+scan/verify/install), `--no-color`, `-v/--verbose`.
 
 Artifacts can be a **directory**, a **single file**, or a **`.zip` archive**.
 
@@ -193,9 +222,19 @@ if result.verdict is Verdict.BLOCK:
    invisible Unicode, entropy analysis, and permission overreach.
 3. **Policy** maps findings to a verdict you can gate installation on.
 
-It's **static analysis** — it reads artifacts, it never executes them. That means
-it's safe to point at untrusted content, but (like any scanner) it's a strong
-first line of defence, not a guarantee. Review `HIGH`/`CRITICAL` findings yourself.
+Modelled on a real firewall's layered stack, AgentFirewall works in three tiers:
+
+```
+PRE-INSTALL (static)     scan code, manifests and model-facing text   → afw scan
+INSTALL-TIME (stateful)  pin a baseline; re-verify every update        → afw pin / --baseline
+RUNTIME (dynamic)        egress firewall + tool-call proxy             → planned (see ROADMAP)
+```
+
+The first two tiers ship today. It's **static analysis + stateful diffing** — it
+reads artifacts, it never executes them, so it's safe to point at untrusted
+content. Like any scanner it's a strong first line of defence, not a guarantee:
+review `HIGH`/`CRITICAL` findings yourself. See
+[`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) for the firewall-mechanics mapping.
 
 ---
 

@@ -22,11 +22,23 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Run tests
         run: pytest -q
-      - name: Self-check (firewall blocks the malicious example)
+      - name: Self-check (firewall blocks the malicious examples)
         run: |
           python -m agentfirewall verify examples/safe-skill
-          if python -m agentfirewall verify examples/malicious-skill; then
-            echo "::error::malicious example was not blocked"; exit 1
+          for bad in examples/malicious-skill examples/poisoned-mcp; do
+            if python -m agentfirewall verify "$bad"; then
+              echo "::error::$bad was not blocked"; exit 1
+            else
+              echo "$bad correctly blocked"
+            fi
+          done
+      - name: Self-check (rug-pull detection)
+        run: |
+          cp -r examples/safe-skill /tmp/rp
+          python -m agentfirewall pin /tmp/rp
+          sed -i 's/allowed-tools: Read, Edit/allowed-tools: Read, Edit, Bash/' /tmp/rp/SKILL.md
+          if python -m agentfirewall verify /tmp/rp --baseline /tmp/rp/afw.lock; then
+            echo "::error::rug-pull (added tool) was not detected"; exit 1
           else
-            echo "malicious example correctly blocked"
+            echo "rug-pull correctly detected"
           fi

@@ -73,7 +73,8 @@ def _scanner(args: argparse.Namespace) -> Scanner:
 # --------------------------------------------------------------------------- #
 def cmd_scan(args: argparse.Namespace) -> int:
     scanner = _scanner(args)
-    results = [scanner.scan_path(p) for p in args.paths]
+    baseline = getattr(args, "baseline", None)
+    results = [scanner.scan_path(p, baseline_path=baseline) for p in args.paths]
     _emit(results, args)
     if any(r.error for r in results):
         return 1
@@ -82,7 +83,8 @@ def cmd_scan(args: argparse.Namespace) -> int:
 
 def cmd_verify(args: argparse.Namespace) -> int:
     scanner = _scanner(args)
-    results = [scanner.scan_path(p) for p in args.paths]
+    baseline = getattr(args, "baseline", None)
+    results = [scanner.scan_path(p, baseline_path=baseline) for p in args.paths]
     _emit(results, args)
     if any(r.error for r in results):
         return 1
@@ -97,7 +99,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
 
 def cmd_install(args: argparse.Namespace) -> int:
     scanner = _scanner(args)
-    result = scanner.scan_path(args.path)
+    result = scanner.scan_path(args.path, baseline_path=getattr(args, "baseline", None))
     _emit([result], args)
 
     if result.error:
@@ -123,6 +125,33 @@ def cmd_install(args: argparse.Namespace) -> int:
 
     forced = " (FORCED past firewall)" if (result.verdict is Verdict.BLOCK and args.force) else ""
     print(f"\n✓ Installed {result.artifact.name} → {target}{forced}")
+    return 0
+
+
+def cmd_pin(args: argparse.Namespace) -> int:
+    from . import baseline
+
+    scanner = _scanner(args)
+    result = scanner.scan_path(args.path)
+    if result.error:
+        _stderr(f"error: {result.error}")
+        return 1
+
+    _emit([result], args)
+    if result.verdict is Verdict.BLOCK and not args.force:
+        _stderr("\n⛔ Refusing to pin a BLOCKED artifact — fix the findings first, "
+                "or use --force to pin as-is.")
+        return 2
+
+    out = args.output
+    if not out:
+        out = (os.path.join(args.path, baseline.DEFAULT_LOCK_NAME)
+               if os.path.isdir(args.path) else args.path + ".lock")
+    written = baseline.write(out, result.artifact)
+    n_files = sum(1 for sf in result.artifact.files if sf.sha256)
+    print(f"\n✓ Pinned {result.artifact.name} → {written}  "
+          f"({n_files} files hashed). Re-verify updates with:  "
+          f"afw verify {args.path} --baseline {written}")
     return 0
 
 
@@ -164,25 +193,42 @@ def cmd_watch(args: argparse.Namespace) -> int:
 def cmd_rules(args: argparse.Namespace) -> int:
     from .rules.base import PatternRule
 
-    rows: list[tuple[str, str, str, str]] = []
+    rows: list[dict] = []
     for rule in all_rules():
         if isinstance(rule, PatternRule):
             for sig in rule.signatures:
-                rows.append((sig.id, sig.severity.label, rule.category, sig.title))
+                rows.append({
+                    "id": sig.id, "severity": sig.severity.label, "category": rule.category,
+                    "title": sig.title,
+                    "references": list(sig.references or rule.default_references),
+                })
         else:
-            rows.append((rule.id + "-*", "-", rule.category, type(rule).__name__))
+            rows.append({
+                "id": rule.id + "-*", "severity": "varies", "category": rule.category,
+                "title": type(rule).__name__, "references": [],
+            })
 
     if getattr(args, "format", "text") == "json":
         import json
-        print(json.dumps([
-            {"id": r[0], "severity": r[1], "category": r[2], "title": r[3]} for r in rows
-        ], indent=2))
+        print(json.dumps(rows, indent=2))
         return 0
 
     print(f"AgentFirewall {__version__} — {len(rows)} detections\n")
-    width = max(len(r[0]) for r in rows)
-    for rid, sev, cat, title in rows:
-        print(f"  {rid:<{width}}  {sev:<8}  {cat:<15}  {title}")
+    width = max(len(r["id"]) for r in rows)
+    cat_w = max(len(r["category"]) for r in rows)
+    for r in rows:
+        print(f"  {r['id']:<{width}}  {r['severity']:<8}  {r['category']:<{cat_w}}  {r['title']}")
+
+    # Framework coverage summary.
+    frameworks: dict[str, int] = {}
+    for r in rows:
+        for ref in r["references"]:
+            fam = ref.split(":", 1)[0]
+            frameworks[fam] = frameworks.get(fam, 0) + 1
+    if frameworks:
+        print("\nFramework coverage (detections mapped):")
+        for fam in sorted(frameworks):
+            print(f"  {fam:<14} {frameworks[fam]}")
     return 0
 
 
@@ -238,6 +284,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_scan = sub.add_parser("scan", help="scan artifacts and print a report")
     p_scan.add_argument("paths", nargs="+", help="files, directories or .zip archives")
+    p_scan.add_argument("--baseline", metavar="LOCK",
+                        help="afw.lock to diff against (detects rug-pull drift)")
     add_common(p_scan)
     p_scan.set_defaults(func=cmd_scan)
 
@@ -245,6 +293,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_verify.add_argument("paths", nargs="+")
     p_verify.add_argument("--fail-on-warn", action="store_true",
                           help="also fail when the verdict is WARN")
+    p_verify.add_argument("--baseline", metavar="LOCK",
+                          help="afw.lock to diff against (detects rug-pull drift)")
     add_common(p_verify)
     p_verify.set_defaults(func=cmd_verify)
 
@@ -256,8 +306,19 @@ def build_parser() -> argparse.ArgumentParser:
                            help="install even if BLOCKED (dangerous)")
     p_install.add_argument("--yes", action="store_true",
                            help="assume yes for WARN confirmations")
+    p_install.add_argument("--baseline", metavar="LOCK",
+                           help="afw.lock to diff against before installing")
     add_common(p_install)
     p_install.set_defaults(func=cmd_install)
+
+    p_pin = sub.add_parser("pin", help="record a trusted baseline (afw.lock) for an artifact")
+    p_pin.add_argument("path", help="artifact to pin (dir/file/zip)")
+    p_pin.add_argument("-o", "--output", metavar="LOCK",
+                       help="where to write the lock file (default: <artifact>/afw.lock)")
+    p_pin.add_argument("--force", action="store_true",
+                       help="pin even if the artifact is currently BLOCKED")
+    add_common(p_pin)
+    p_pin.set_defaults(func=cmd_pin)
 
     p_watch = sub.add_parser("watch", help="monitor a directory and scan new artifacts")
     p_watch.add_argument("directory")

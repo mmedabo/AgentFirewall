@@ -72,6 +72,9 @@ def render_text(result: ScanResult, color: bool | None = None, verbose: bool = F
             lines.append(f"          → {f.location()}")
             if f.evidence:
                 lines.append(f"          {paint(f.evidence, _COLORS[Severity.INFO])}")
+            if f.references:
+                lines.append(paint(f"          ⓘ {', '.join(f.references)}",
+                                   _COLORS[Severity.INFO]))
             if verbose and f.remediation:
                 lines.append(f"          fix: {f.remediation}")
             lines.append("")
@@ -122,7 +125,12 @@ def render_sarif(results: list[ScanResult], version: str = "0.1.0") -> str:
                     "name": f.title,
                     "shortDescription": {"text": f.title},
                     "fullDescription": {"text": f.remediation or f.message},
-                    "properties": {"category": f.category, "severity": f.severity.label},
+                    "properties": {
+                        "category": f.category,
+                        "severity": f.severity.label,
+                        "references": list(f.references),
+                        "tags": list(f.references),
+                    },
                 })
             sarif_results.append({
                 "ruleId": f.rule_id,

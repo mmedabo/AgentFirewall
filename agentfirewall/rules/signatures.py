@@ -7,6 +7,7 @@ host it is installed into.
 """
 from __future__ import annotations
 
+from .. import frameworks as F
 from ..models import Severity
 from .base import PatternRule, compile_sig
 
@@ -18,6 +19,7 @@ S = Severity
 SECRETS = PatternRule(
     id="secrets",
     category="secret-access",
+    default_references=(F.LLM02_SENSITIVE_INFO, F.ATLAS_UNSECURED_CREDENTIALS),
     signatures=[
         compile_sig(
             "AFW-SEC-001", "Reads SSH private keys", S.CRITICAL,
@@ -70,6 +72,7 @@ SECRETS = PatternRule(
 NETWORK = PatternRule(
     id="network",
     category="exfiltration",
+    default_references=(F.ATLAS_EXFILTRATION, F.LLM02_SENSITIVE_INFO),
     signatures=[
         compile_sig(
             "AFW-NET-001", "Exfiltration to paste/webhook service", S.HIGH,
@@ -127,6 +130,7 @@ NETWORK = PatternRule(
 OBFUSCATION = PatternRule(
     id="obfuscation",
     category="obfuscation",
+    default_references=(F.ATLAS_EXECUTION, F.ATLAS_DEFENSE_EVASION),
     signatures=[
         compile_sig(
             "AFW-OBF-001", "Download-and-execute (curl | bash)", S.CRITICAL,
@@ -170,6 +174,7 @@ OBFUSCATION = PatternRule(
 DESTRUCTIVE = PatternRule(
     id="destructive",
     category="destructive",
+    default_references=(F.ATLAS_IMPACT, F.LLM06_EXCESSIVE_AGENCY),
     signatures=[
         compile_sig(
             "AFW-DES-001", "Recursive force delete of a broad path", S.CRITICAL,
@@ -215,6 +220,7 @@ DESTRUCTIVE = PatternRule(
 FILESYSTEM = PatternRule(
     id="filesystem",
     category="filesystem",
+    default_references=(F.ATLAS_UNSECURED_CREDENTIALS, F.LLM02_SENSITIVE_INFO),
     signatures=[
         compile_sig(
             "AFW-FS-001", "Reads browser / app credential stores", S.HIGH,
@@ -239,5 +245,174 @@ FILESYSTEM = PatternRule(
     ],
 )
 
+# --------------------------------------------------------------------------- #
+# 6. Embedded credentials shipped inside the artifact (OWASP LLM02)
+# --------------------------------------------------------------------------- #
+EMBEDDED_SECRETS = PatternRule(
+    id="embedded-secrets",
+    category="embedded-secret",
+    default_references=(F.LLM02_SENSITIVE_INFO,),
+    signatures=[
+        compile_sig(
+            "AFW-KEY-001", "Bundled private key", S.HIGH,
+            r"-----BEGIN\s+(RSA|EC|OPENSSH|DSA|PGP)?\s*PRIVATE\s+KEY-----",
+            "Ships a private key inside the artifact.",
+            "Remove the key; distribute secrets out of band, never in an artifact.",
+            flags=0,
+        ),
+        compile_sig(
+            "AFW-KEY-002", "AWS access key id", S.HIGH,
+            r"\b(AKIA|ASIA|AGPA|AIDA|AROA)[0-9A-Z]{16}\b",
+            "Contains a hard-coded AWS access key id.",
+            "Rotate the key and remove it from the artifact.",
+            flags=0,
+        ),
+        compile_sig(
+            "AFW-KEY-003", "GitHub / GitLab token", S.HIGH,
+            r"\b(gh[pousr]_[A-Za-z0-9]{36,}|glpat-[A-Za-z0-9_-]{20,})\b",
+            "Contains a hard-coded GitHub or GitLab access token.",
+            "Revoke the token and remove it from the artifact.",
+            flags=0,
+        ),
+        compile_sig(
+            "AFW-KEY-004", "AI provider API key", S.HIGH,
+            r"\b(sk-(ant-|proj-)?[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{30,})\b",
+            "Contains a hard-coded OpenAI/Anthropic/Google API key.",
+            "Revoke the key and remove it from the artifact.",
+            flags=0,
+        ),
+        compile_sig(
+            "AFW-KEY-005", "Slack token", S.HIGH,
+            r"\bxox[baprs]-[A-Za-z0-9-]{10,}\b",
+            "Contains a hard-coded Slack token.",
+            "Revoke the token and remove it from the artifact.",
+            flags=0,
+        ),
+        compile_sig(
+            "AFW-KEY-006", "Generic secret assignment", S.MEDIUM,
+            r"(?i)\b(api[_-]?key|secret|password|passwd|token|access[_-]?key)\b\s*[:=]\s*"
+            r"['\"][^'\"]{12,}['\"]",
+            "Assigns a long literal to a secret-looking variable.",
+            "Load secrets from the environment or a vault, not literals.",
+        ),
+    ],
+)
+
+# --------------------------------------------------------------------------- #
+# 7. Unsafe deserialization / model-weight poisoning (OWASP LLM04)
+# --------------------------------------------------------------------------- #
+DESERIALIZATION = PatternRule(
+    id="deserialization",
+    category="deserialization",
+    default_references=(F.LLM04_DATA_POISONING, F.ATLAS_EXECUTION),
+    signatures=[
+        compile_sig(
+            "AFW-DSR-001", "Unsafe pickle deserialization", S.HIGH,
+            r"\bpickle\.loads?\s*\(|\bcPickle\.loads?\s*\(|"
+            r"numpy\.load\s*\([^)]*allow_pickle\s*=\s*True|\byaml\.load\s*\((?![^)]*Loader)",
+            "Deserializes untrusted data with pickle/unsafe YAML, enabling code execution.",
+            "Use safe loaders (json, yaml.safe_load, weights_only=True).",
+        ),
+        compile_sig(
+            "AFW-DSR-002", "Loads model weights that can execute code", S.MEDIUM,
+            r"\btorch\.load\s*\((?![^)]*weights_only\s*=\s*True)|\bjoblib\.load\s*\(|"
+            r"keras\.models\.load_model\s*\(",
+            "Loads model weights in a format (pickle-backed) that can run code on load.",
+            "Prefer safetensors or torch.load(..., weights_only=True) from trusted sources.",
+        ),
+        compile_sig(
+            "AFW-DSR-003", "Bundled pickle / weight file", S.LOW,
+            r"\.(pkl|pickle|pt|pth|bin|h5|joblib|gguf|ckpt)(['\"\s]|$)",
+            "References a pickle/weight file that may execute code when loaded.",
+            "Verify the provenance of bundled model/data files.",
+        ),
+    ],
+)
+
+# --------------------------------------------------------------------------- #
+# 8. Improper output handling: model/LLM output flowing into a sink (LLM05)
+# --------------------------------------------------------------------------- #
+OUTPUT_HANDLING = PatternRule(
+    id="output-handling",
+    category="output-handling",
+    default_references=(F.LLM05_OUTPUT_HANDLING,),
+    signatures=[
+        compile_sig(
+            "AFW-OUT-001", "Model output flows into a shell/interpreter", S.HIGH,
+            r"(?:(os\.system|subprocess\.[A-Za-z_]+|exec|eval)\s*\([^)]{0,80}"
+            r"\b(completion|response|message|llm_?out\w*|model_?out\w*|answer|generated|reply)\b)"
+            r"|(?:\b(completion|response|llm_?out\w*|model_?out\w*)\b[\w\[\].\"']*\s*"
+            r"[^\n]{0,20}(\||into)[^\n]{0,20}(os\.system|subprocess|\bexec\b|\beval\b|bash|sh\b))",
+            "Feeds LLM output directly into command/dynamic execution.",
+            "Never execute model output; validate and use structured, allow-listed actions.",
+        ),
+        compile_sig(
+            "AFW-OUT-002", "Unsanitized output into SQL / HTML", S.MEDIUM,
+            r"(execute|executescript|cursor\.execute)\s*\([^)]*(completion|response|llm|model_?out)",
+            "Interpolates model output into a SQL/HTML sink without sanitization.",
+            "Parameterize queries and escape output before rendering.",
+        ),
+    ],
+)
+
+# --------------------------------------------------------------------------- #
+# 9. Anti-forensics / repudiation: covering tracks (Agentic T8, ATLAS)
+# --------------------------------------------------------------------------- #
+ANTI_FORENSICS = PatternRule(
+    id="anti-forensics",
+    category="anti-forensics",
+    default_references=(F.AGENTIC_REPUDIATION, F.ATLAS_DEFENSE_EVASION),
+    signatures=[
+        compile_sig(
+            "AFW-AF-001", "Clears shell history", S.MEDIUM,
+            r"\bhistory\s+-c\b|\bunset\s+HISTFILE\b|\bexport\s+HISTFILE=/dev/null|"
+            r"\bset\s+\+o\s+history\b|>\s*~?/?\.(bash|zsh)_history",
+            "Disables or wipes shell history to cover its tracks.",
+            "Agents should never tamper with the user's command history.",
+        ),
+        compile_sig(
+            "AFW-AF-002", "Deletes or tampers with system logs", S.HIGH,
+            r"\b(rm|truncate|shred)\b[^\n]{0,60}/var/log|"
+            r">\s*/var/log/[\w./]+|\bjournalctl\b[^\n]{0,20}--vacuum|\bauditctl\s+-D\b|"
+            r"\bwevtutil\s+cl\b",
+            "Deletes or truncates audit/system logs, a hallmark of anti-forensics.",
+            "Removing logs destroys the audit trail; do not install.",
+        ),
+    ],
+)
+
+# --------------------------------------------------------------------------- #
+# 10. Memory / context poisoning: writing to files OTHER agents read (Agentic)
+# --------------------------------------------------------------------------- #
+MEMORY_POISONING = PatternRule(
+    id="memory-poisoning",
+    category="memory-poisoning",
+    default_references=(F.AGENTIC_MEMORY_POISONING, F.LLM01_PROMPT_INJECTION),
+    signatures=[
+        compile_sig(
+            "AFW-MEM-001", "Writes to an agent instruction file", S.HIGH,
+            r"(>>?|open\s*\(|write_text|fs\.(append|write)file\w*)\s*[^\n]{0,40}"
+            r"(CLAUDE\.md|AGENTS?\.md|\.cursorrules|\.clinerules|\.windsurfrules|"
+            r"copilot-instructions\.md|\.github/instructions|GEMINI\.md)",
+            "Writes into an agent instruction/rules file that other agents auto-load, "
+            "injecting persistent hidden instructions (memory poisoning).",
+            "Agents should not modify instruction files that steer other agents.",
+        ),
+        compile_sig(
+            "AFW-MEM-002", "Modifies agent / MCP configuration", S.HIGH,
+            r"(>>?|open\s*\(|write_text)\s*[^\n]{0,40}"
+            r"(\.mcp\.json|claude_desktop_config\.json|\.claude/settings|"
+            r"\.config/[\w-]*(claude|cursor|cline)|\.continue/config)",
+            "Writes into agent or MCP configuration, which can silently add servers, "
+            "tools or permissions.",
+            "Do not let an installed artifact rewrite agent/MCP configuration.",
+        ),
+    ],
+)
+
 # All PatternRules exported for the registry.
-PATTERN_RULES = [SECRETS, NETWORK, OBFUSCATION, DESTRUCTIVE, FILESYSTEM]
+PATTERN_RULES = [
+    SECRETS, NETWORK, OBFUSCATION, DESTRUCTIVE, FILESYSTEM,
+    EMBEDDED_SECRETS, DESERIALIZATION, OUTPUT_HANDLING, ANTI_FORENSICS,
+    MEMORY_POISONING,
+]
