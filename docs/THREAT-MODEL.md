@@ -52,11 +52,12 @@ built to mirror that stack for AI artifacts:
 | Packet filtering (stateless) | Match each packet vs static rules | **Signature rules** — match each line vs a pattern | ✅ shipped |
 | Stateful inspection | Track connection state across time | **Baseline + diff** (`afw pin` / `--baseline`) — remember approved shape, flag drift | ✅ shipped |
 | Default-deny | Deny all, allow known-good | `--strict` policy + planned `--default-deny` capability allowlist | ⚠️ partial |
+| Trust zones / segmentation | Different bar per zone | **Trust tiers** from provenance (`afw pin`, signatures, SBOM) tighten policy | ✅ shipped |
 | Egress filtering | Control outbound to stop exfiltration | **Runtime network allowlist** (sandbox) | 🔜 planned |
 | WAF / reverse proxy (L7) | Inspect each app-layer request | **MCP/tool proxy** — inspect each tool call & result | 🔜 planned |
 | IDS vs IPS | Detect vs prevent | `scan` (detect) vs `verify`/`install` gate (prevent) | ✅ shipped |
-| Threat-intel feeds | Known-bad IoCs | Pluggable malicious-name/domain/hash lists | 🔜 planned |
-| Policy/rulebase | Ordered ruleset | `Policy` (thresholds, ignore, categories) | ✅ shipped |
+| Threat-intel feeds | Known-bad IoCs | Pluggable malicious name/domain/hash/signer feeds (`AFW-IOC-*`) | ✅ shipped |
+| Policy/rulebase | Ordered ruleset | `Policy` (thresholds, ignore, categories, trust tightening) | ✅ shipped |
 
 The three tiers, in defence-in-depth order:
 
@@ -99,6 +100,8 @@ Every detection cites the framework(s) it maps to (see `agentfirewall/frameworks
 | `AFW-SQT-001…002` | MEDIUM | typosquatting | Supply-Chain:Typosquatting, OWASP-LLM03 |
 | `AFW-DRIFT-001…004` | up to HIGH | integrity/rug-pull | MCP:Rug-Pull, SLSA:Provenance |
 | `AFW-DRIFT-010…013` | up to CRITICAL | rug-pull | MCP:Rug-Pull, OWASP-Agentic:Privilege-Compromise |
+| `AFW-PROV-001…002` | INFO | provenance | SLSA:Unsigned-Artifact, SLSA:Provenance |
+| `AFW-IOC-001…004` | up to CRITICAL | threat-intel | Threat-Intel:Known-Malicious-IoC, Revoked-Signer |
 
 ## 6. The rug-pull defense (stateful layer)
 
@@ -120,7 +123,30 @@ AgentFirewall answers this with a **baseline**:
 Store the lock file where the artifact cannot rewrite it, and re-pin only after a
 human reviews the diff.
 
-## 7. Known limitations
+## 7. Trust zoning & threat intel (provenance layer)
+
+A firewall does not treat every source the same. AgentFirewall assigns each
+artifact a **trust tier** from the independent provenance it can find:
+
+| Tier | Meaning |
+|---|---|
+| `UNTRUSTED` | No signature, attestation, SBOM, or local baseline. |
+| `DECLARED` | Signature / attestation / SBOM files are present but **not** verified. |
+| `PINNED` | The user holds a local `afw.lock` baseline for it (a real local anchor). |
+| `VERIFIED` | A signature was cryptographically verified (`--verify-signatures`). |
+
+The tier feeds policy: an `UNTRUSTED` artifact is held to a **stricter bar** — the
+block threshold tightens by one severity level (so a borderline `MEDIUM` finding on
+an unsigned, unpinned artifact blocks). `afw pin` raises trust to `PINNED`;
+`--no-tighten-untrusted` opts out. This is deliberately honest: *presence* of a
+signature file is not *proof*, so an unverified signature only reaches `DECLARED`.
+
+**Threat intel** answers a different question — is this artifact *known* bad? —
+matching its name, file hashes, contacted domains, and signer identity against
+pluggable, offline-by-default IoC feeds (`AFW-IOC-*`). This is the firewall analog
+of an IP/domain blocklist.
+
+## 8. Known limitations
 
 - Static rules can be evaded by novel obfuscation; entropy/unicode heuristics
   reduce but do not eliminate this.

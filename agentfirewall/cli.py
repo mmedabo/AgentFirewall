@@ -16,6 +16,7 @@ import time
 from typing import Optional
 
 from . import __version__, report
+from .intel import ThreatIntel
 from .models import ScanResult, Severity, Verdict
 from .policy import Policy
 from .rules import all_rules
@@ -36,6 +37,8 @@ def _build_policy(args: argparse.Namespace) -> Policy:
         policy.ignore.add(rid)
     if getattr(args, "fail_on", None):
         policy.block_severity = Severity.from_name(args.fail_on)
+    if getattr(args, "no_tighten_untrusted", False):
+        policy.tighten_untrusted = False
     return policy
 
 
@@ -65,7 +68,15 @@ def _worst(results: list[ScanResult]) -> Verdict:
 
 
 def _scanner(args: argparse.Namespace) -> Scanner:
-    return Scanner(policy=_build_policy(args))
+    intel = None
+    if not getattr(args, "no_intel", False):
+        intel = ThreatIntel.default(getattr(args, "intel", None) or [])
+    return Scanner(
+        policy=_build_policy(args),
+        intel=intel,
+        verify_signatures=getattr(args, "verify_signatures", False),
+        expected_identity=getattr(args, "identity", None),
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -208,6 +219,19 @@ def cmd_rules(args: argparse.Namespace) -> int:
                 "title": type(rule).__name__, "references": [],
             })
 
+    # Engine-level detections that run outside the rule registry.
+    rows.extend([
+        {"id": "AFW-DRIFT-*", "severity": "varies", "category": "rug-pull",
+         "title": "Baseline drift / rug pull (--baseline)",
+         "references": ["MCP:Rug-Pull", "OWASP-Agentic:Privilege-Compromise"]},
+        {"id": "AFW-PROV-*", "severity": "INFO", "category": "provenance",
+         "title": "Provenance / trust tier",
+         "references": ["SLSA:Provenance-and-Integrity", "SLSA:Unsigned-Artifact"]},
+        {"id": "AFW-IOC-*", "severity": "varies", "category": "threat-intel",
+         "title": "Threat-intel / IoC match (--intel)",
+         "references": ["Threat-Intel:Known-Malicious-IoC", "Threat-Intel:Revoked-Signer"]},
+    ])
+
     if getattr(args, "format", "text") == "json":
         import json
         print(json.dumps(rows, indent=2))
@@ -281,6 +305,17 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("--no-color", action="store_true", help="disable ANSI colour")
         p.add_argument("-v", "--verbose", action="store_true",
                        help="include remediation guidance")
+        # Provenance & threat-intel (Phase 3).
+        p.add_argument("--intel", action="append", metavar="PATH",
+                       help="additional IoC feed file/dir (JSON or txt; repeatable)")
+        p.add_argument("--no-intel", action="store_true",
+                       help="disable the bundled/default threat-intel feeds")
+        p.add_argument("--verify-signatures", action="store_true",
+                       help="attempt cryptographic signature verification (needs cosign)")
+        p.add_argument("--identity", metavar="ID",
+                       help="expected signer identity to verify against")
+        p.add_argument("--no-tighten-untrusted", action="store_true",
+                       help="do not tighten policy for unsigned/unpinned artifacts")
 
     p_scan = sub.add_parser("scan", help="scan artifacts and print a report")
     p_scan.add_argument("paths", nargs="+", help="files, directories or .zip archives")

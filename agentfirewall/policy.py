@@ -10,9 +10,9 @@ from __future__ import annotations
 import json
 import os
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Optional
 
-from .models import Finding, Severity, Verdict
+from .models import Finding, Severity, TrustTier, Verdict
 
 
 @dataclass
@@ -27,6 +27,9 @@ class Policy:
     ignore: set[str] = field(default_factory=set)
     #: If set, findings from these categories are downgraded to warnings.
     warn_only_categories: set[str] = field(default_factory=set)
+    #: Hold UNTRUSTED artifacts (no signature/attestation/baseline) to a stricter
+    #: bar: lower the effective block threshold by one severity level.
+    tighten_untrusted: bool = True
 
     # ---- verdict logic --------------------------------------------------- #
     def filter(self, findings: list[Finding]) -> list[Finding]:
@@ -41,12 +44,21 @@ class Policy:
             return Severity(self.block_severity - 1)
         return f.severity
 
-    def decide(self, findings: list[Finding]) -> Verdict:
+    def block_threshold(self, trust_tier: Optional[TrustTier] = None) -> Severity:
+        """The effective block severity, tightened for untrusted artifacts."""
+        threshold = self.block_severity
+        if (self.tighten_untrusted and trust_tier is not None
+                and trust_tier <= TrustTier.UNTRUSTED and threshold > Severity.LOW):
+            threshold = Severity(threshold - 1)
+        return threshold
+
+    def decide(self, findings: list[Finding],
+               trust_tier: Optional[TrustTier] = None) -> Verdict:
         """Compute the verdict for a (already-filtered) list of findings."""
         if not findings:
             return Verdict.ALLOW
         top = max(self._effective_severity(f) for f in findings)
-        if top >= self.block_severity:
+        if top >= self.block_threshold(trust_tier):
             return Verdict.BLOCK
         if top >= self.warn_severity:
             return Verdict.WARN
@@ -73,6 +85,8 @@ class Policy:
             kwargs["ignore"] = set(data["ignore"] or [])
         if "warn_only_categories" in data:
             kwargs["warn_only_categories"] = set(data["warn_only_categories"] or [])
+        if "tighten_untrusted" in data:
+            kwargs["tighten_untrusted"] = _as_bool(data["tighten_untrusted"])
         return cls(**kwargs)
 
     @classmethod
@@ -81,6 +95,12 @@ class Policy:
             text = fh.read()
         data = _parse_config(text, path)
         return cls.from_dict(data)
+
+
+def _as_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _parse_config(text: str, path: str) -> dict[str, Any]:

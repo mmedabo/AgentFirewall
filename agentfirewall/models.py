@@ -48,6 +48,23 @@ class Verdict(enum.Enum):
         return {Verdict.ALLOW: 0, Verdict.WARN: 0, Verdict.BLOCK: 2}[self]
 
 
+class TrustTier(enum.IntEnum):
+    """How much independent provenance backs an artifact.
+
+    Higher == more trustworthy. Drives policy: an ``UNTRUSTED`` artifact (no
+    signature, no attestation, not locally pinned) is held to a stricter bar.
+    """
+
+    UNTRUSTED = 0  # no provenance signals at all
+    DECLARED = 1   # signature/attestation/SBOM files present but NOT verified
+    PINNED = 2     # user holds a local baseline (afw.lock) for it
+    VERIFIED = 3   # a signature was cryptographically verified
+
+    @property
+    def label(self) -> str:
+        return self.name.title()
+
+
 @dataclass(frozen=True)
 class Finding:
     """A single suspicious thing discovered in an artifact."""
@@ -119,6 +136,8 @@ class ScanResult:
     findings: list[Finding] = field(default_factory=list)
     verdict: Verdict = Verdict.ALLOW
     error: Optional[str] = None
+    trust_tier: TrustTier = TrustTier.UNTRUSTED
+    provenance: Optional[dict[str, Any]] = None
 
     @property
     def max_severity(self) -> Optional[Severity]:
@@ -142,6 +161,8 @@ class ScanResult:
                 "metadata": self.artifact.metadata,
             },
             "verdict": self.verdict.value,
+            "trust_tier": self.trust_tier.label,
+            "provenance": self.provenance,
             "max_severity": self.max_severity.label if self.max_severity else None,
             "counts": self.counts(),
             "findings": [f.to_dict() for f in self.findings],

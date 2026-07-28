@@ -36,6 +36,20 @@ def _use_color(force: bool | None) -> bool:
     return sys.stdout.isatty()
 
 
+def _trust_detail(result: ScanResult) -> str:
+    p = result.provenance or {}
+    bits = []
+    if p.get("signed"):
+        bits.append("verified-signature" if p.get("verified") else "unverified-signature")
+    if p.get("attested"):
+        bits.append("attested")
+    if p.get("sbom"):
+        bits.append("sbom")
+    if p.get("pinned"):
+        bits.append("pinned")
+    return f"  ({', '.join(bits)})" if bits else ""
+
+
 def render_text(result: ScanResult, color: bool | None = None, verbose: bool = False) -> str:
     c = _use_color(color)
 
@@ -51,6 +65,7 @@ def render_text(result: ScanResult, color: bool | None = None, verbose: bool = F
         lines.append(f"  tools    : {', '.join(a.metadata['declared_tools'])}")
     if a.metadata.get("mcp_servers"):
         lines.append(f"  mcp      : {', '.join(a.metadata['mcp_servers'])}")
+    lines.append(f"  trust    : {result.trust_tier.label}{_trust_detail(result)}")
 
     if result.error:
         lines.append("")

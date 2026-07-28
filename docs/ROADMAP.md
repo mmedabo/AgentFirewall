@@ -45,15 +45,23 @@ drift.
 - Defeats **rug pulls** and insider updates (e.g. Postmark 2025) that static
   analysis alone cannot see.
 
-## 🔜 Phase 3 — Provenance & trust zoning (planned)
+## ✅ Phase 3 — Provenance & trust zoning (shipped)
 
 The "threat-intel + segmentation" layer.
 
-- Verify **Sigstore/cosign signatures** and **SLSA provenance / SBOM**; warn on
-  unsigned artifacts and assign a lower-trust tier that tightens policy.
-- Pluggable, offline-by-default **IoC feeds** (known-malicious package names,
-  domains, file hashes; revoked signers).
-- Trust tiers (signed+pinned vs unknown) that drive per-artifact policy strictness.
+- **Provenance detection**: finds signatures, SLSA/in-toto attestations and SBOMs,
+  extracts the signer identity, and assigns a **trust tier**
+  (`UNTRUSTED` → `DECLARED` → `PINNED` → `VERIFIED`). Optional cryptographic
+  verification via `cosign` (`--verify-signatures --identity <expected>`).
+- **Trust-aware policy**: `UNTRUSTED` artifacts (no signature, attestation or local
+  baseline) are held to a stricter bar — the block threshold tightens by one
+  severity level. `afw pin` raises an artifact to `PINNED`; `--no-tighten-untrusted`
+  opts out. Every scan reports the tier and provenance summary.
+- **Threat-intel / IoC feeds** (`AFW-IOC-*`): match artifact name, file SHA-256,
+  contacted domains and signer identity against pluggable, **offline-by-default**
+  feeds (JSON or `names.txt`/`domains.txt`/`hashes.txt`/`signers.txt`). A bundled
+  seed ships as a starting point; add your own with `--intel <path>` or
+  `~/.config/agentfirewall/intel/`.
 
 ## 🔜 Phase 4 — Runtime firewall (planned)
 

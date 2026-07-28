@@ -42,3 +42,10 @@ jobs:
           else
             echo "rug-pull correctly detected"
           fi
+      - name: Self-check (trust tier + threat intel)
+        run: |
+          python -m agentfirewall scan examples/signed-skill --format json \
+            | python -c "import json,sys; d=json.load(sys.stdin); assert d['trust_tier']=='Declared', d['trust_tier']"
+          python -m agentfirewall scan examples/malicious-skill --format json \
+            | python -c "import json,sys; d=json.load(sys.stdin); ids={f['rule_id'] for f in d['findings']}; assert 'AFW-IOC-003' in ids, ids"
+          echo "trust tier and IoC feed working"

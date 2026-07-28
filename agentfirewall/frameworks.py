@@ -49,4 +49,7 @@ MCP_TOOL_SHADOWING = "MCP:Tool-Shadowing"
 
 # --- Supply-chain integrity ------------------------------------------------- #
 SLSA_PROVENANCE = "SLSA:Provenance-and-Integrity"
+SLSA_UNSIGNED = "SLSA:Unsigned-Artifact"
 SUPPLY_TYPOSQUATTING = "Supply-Chain:Typosquatting"
+SUPPLY_KNOWN_MALICIOUS = "Threat-Intel:Known-Malicious-IoC"
+SUPPLY_REVOKED_SIGNER = "Threat-Intel:Revoked-Signer"

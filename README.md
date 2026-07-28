@@ -41,6 +41,8 @@ too high — with a clear, auditable report of exactly why.
 | 🎛️ **Permission overreach** | skills/agents granting themselves `tools: "*"`, unrestricted `Bash(*)`, silent install hooks |
 | 🎭 **Typosquatting** | homoglyph/look-alike names, one-edit near-misses of popular packages |
 | 🔁 **Rug pulls** *(stateful)* | a pinned artifact whose files, tools, permissions or tool descriptions **silently change** in a later update |
+| 📜 **Weak provenance** | unsigned / unattested artifacts get a lower **trust tier** that tightens the policy applied to them |
+| 🚫 **Known-bad IoCs** | artifact name, file hash, contacted domain or signer identity on a threat-intel feed |
 
 Every detection is mapped to an industry framework — **OWASP Top 10 for LLM Apps**,
 **OWASP Top 10 for Agentic Apps**, **MITRE ATLAS**, **MCP threat research** and
@@ -125,11 +127,33 @@ by itself, the alarm — even if the new code contains no known-bad signature. T
 is how AgentFirewall catches the attacks static scanning can't: rug pulls and
 insider updates (like the Postmark BCC incident) that ship clean and mutate later.
 
+**Trust tiers & threat intel — treat unknown sources with more suspicion:**
+
+Like a firewall's trust zones, AgentFirewall assigns each artifact a **trust tier**
+from the provenance it can find, and holds low-trust artifacts to a stricter bar:
+
+```
+UNTRUSTED  no signature / attestation / baseline   → block threshold tightens
+DECLARED   signature or SBOM present (unverified)
+PINNED     you hold a local afw.lock for it         → afw pin
+VERIFIED   signature cryptographically verified      → --verify-signatures --identity <id>
+```
+
+```bash
+afw scan ./skill                       # trust: Untrusted  (unsigned → stricter policy)
+afw scan ./skill --intel ./my-iocs/    # also match names/hashes/domains/signers vs your feeds
+```
+
+Threat-intel feeds are **offline by default** (JSON or `names.txt`/`domains.txt`/
+`hashes.txt`/`signers.txt`); drop your own into `~/.config/agentfirewall/intel/`.
+A hit on a known-malicious name, file hash, domain or revoked signer is `AFW-IOC-*`.
+
 Try it right now against the bundled examples:
 
 ```bash
-afw scan examples/safe-skill        # ✓ ALLOW
-afw scan examples/malicious-skill   # ✗ BLOCK  (a catalogue of bad behaviour)
+afw scan examples/safe-skill        # ✓ ALLOW  (trust: Untrusted)
+afw scan examples/signed-skill      # ✓ ALLOW  (trust: Declared — signature + SBOM)
+afw scan examples/malicious-skill   # ✗ BLOCK  (a catalogue of bad behaviour + IoC hit)
 afw scan examples/poisoned-mcp      # ✗ BLOCK  (MCP tool poisoning + env secrets)
 ```
 
@@ -147,8 +171,9 @@ afw scan examples/poisoned-mcp      # ✗ BLOCK  (MCP tool poisoning + env secre
 | `afw rules` | List every detection with ID, severity, category, and framework coverage. |
 
 Common flags: `--format text|json|sarif`, `--policy <file>`, `--strict`,
-`--fail-on <SEVERITY>`, `--ignore <RULE_ID>`, `--baseline <lock>` (on
-scan/verify/install), `--no-color`, `-v/--verbose`.
+`--fail-on <SEVERITY>`, `--ignore <RULE_ID>`, `--baseline <lock>`, `--intel <path>`,
+`--no-intel`, `--verify-signatures --identity <id>`, `--no-tighten-untrusted`,
+`--no-color`, `-v/--verbose`.
 
 Artifacts can be a **directory**, a **single file**, or a **`.zip` archive**.
 
