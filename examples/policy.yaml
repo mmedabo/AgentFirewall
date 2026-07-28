@@ -1,0 +1,17 @@
+# Example AgentFirewall policy.
+# Use with:  afw scan ./some-skill --policy examples/policy.yaml
+
+# Block installation when any finding is at this severity or higher.
+# One of: INFO, LOW, MEDIUM, HIGH, CRITICAL
+block_severity: HIGH
+
+# Emit a warning (but still allow) at this severity or higher.
+warn_severity: LOW
+
+# Rule ids or categories to suppress entirely. Useful for accepted risks.
+ignore:
+  - AFW-PERM-002   # "powerful tool requested" — expected for our own agents
+
+# Categories that should only ever warn, never block.
+warn_only_categories:
+  - install-hook
