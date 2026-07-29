@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import argparse
+import json as _json
 import os
 import shutil
 import sys
@@ -16,6 +17,7 @@ import time
 from typing import Optional
 
 from . import __version__, report
+from .intel import ThreatIntel
 from .models import ScanResult, Severity, Verdict
 from .policy import Policy
 from .rules import all_rules
@@ -36,6 +38,8 @@ def _build_policy(args: argparse.Namespace) -> Policy:
         policy.ignore.add(rid)
     if getattr(args, "fail_on", None):
         policy.block_severity = Severity.from_name(args.fail_on)
+    if getattr(args, "no_tighten_untrusted", False):
+        policy.tighten_untrusted = False
     return policy
 
 
@@ -65,7 +69,15 @@ def _worst(results: list[ScanResult]) -> Verdict:
 
 
 def _scanner(args: argparse.Namespace) -> Scanner:
-    return Scanner(policy=_build_policy(args))
+    intel = None
+    if not getattr(args, "no_intel", False):
+        intel = ThreatIntel.default(getattr(args, "intel", None) or [])
+    return Scanner(
+        policy=_build_policy(args),
+        intel=intel,
+        verify_signatures=getattr(args, "verify_signatures", False),
+        expected_identity=getattr(args, "identity", None),
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -73,7 +85,8 @@ def _scanner(args: argparse.Namespace) -> Scanner:
 # --------------------------------------------------------------------------- #
 def cmd_scan(args: argparse.Namespace) -> int:
     scanner = _scanner(args)
-    results = [scanner.scan_path(p) for p in args.paths]
+    baseline = getattr(args, "baseline", None)
+    results = [scanner.scan_path(p, baseline_path=baseline) for p in args.paths]
     _emit(results, args)
     if any(r.error for r in results):
         return 1
@@ -82,7 +95,8 @@ def cmd_scan(args: argparse.Namespace) -> int:
 
 def cmd_verify(args: argparse.Namespace) -> int:
     scanner = _scanner(args)
-    results = [scanner.scan_path(p) for p in args.paths]
+    baseline = getattr(args, "baseline", None)
+    results = [scanner.scan_path(p, baseline_path=baseline) for p in args.paths]
     _emit(results, args)
     if any(r.error for r in results):
         return 1
@@ -97,7 +111,7 @@ def cmd_verify(args: argparse.Namespace) -> int:
 
 def cmd_install(args: argparse.Namespace) -> int:
     scanner = _scanner(args)
-    result = scanner.scan_path(args.path)
+    result = scanner.scan_path(args.path, baseline_path=getattr(args, "baseline", None))
     _emit([result], args)
 
     if result.error:
@@ -123,6 +137,33 @@ def cmd_install(args: argparse.Namespace) -> int:
 
     forced = " (FORCED past firewall)" if (result.verdict is Verdict.BLOCK and args.force) else ""
     print(f"\n✓ Installed {result.artifact.name} → {target}{forced}")
+    return 0
+
+
+def cmd_pin(args: argparse.Namespace) -> int:
+    from . import baseline
+
+    scanner = _scanner(args)
+    result = scanner.scan_path(args.path)
+    if result.error:
+        _stderr(f"error: {result.error}")
+        return 1
+
+    _emit([result], args)
+    if result.verdict is Verdict.BLOCK and not args.force:
+        _stderr("\n⛔ Refusing to pin a BLOCKED artifact — fix the findings first, "
+                "or use --force to pin as-is.")
+        return 2
+
+    out = args.output
+    if not out:
+        out = (os.path.join(args.path, baseline.DEFAULT_LOCK_NAME)
+               if os.path.isdir(args.path) else args.path + ".lock")
+    written = baseline.write(out, result.artifact)
+    n_files = sum(1 for sf in result.artifact.files if sf.sha256)
+    print(f"\n✓ Pinned {result.artifact.name} → {written}  "
+          f"({n_files} files hashed). Re-verify updates with:  "
+          f"afw verify {args.path} --baseline {written}")
     return 0
 
 
@@ -161,34 +202,158 @@ def cmd_watch(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_serve(args: argparse.Namespace) -> int:
+    from .web.server import serve
+
+    try:
+        serve(host=args.host, port=args.port, open_browser=args.open)
+    except OSError as exc:
+        _stderr(f"serve: could not bind {args.host}:{args.port} — {exc}")
+        return 1
+    return 0
+
+
 def cmd_rules(args: argparse.Namespace) -> int:
     from .rules.base import PatternRule
 
-    rows: list[tuple[str, str, str, str]] = []
+    rows: list[dict] = []
     for rule in all_rules():
         if isinstance(rule, PatternRule):
             for sig in rule.signatures:
-                rows.append((sig.id, sig.severity.label, rule.category, sig.title))
+                rows.append({
+                    "id": sig.id, "severity": sig.severity.label, "category": rule.category,
+                    "title": sig.title,
+                    "references": list(sig.references or rule.default_references),
+                })
         else:
-            rows.append((rule.id + "-*", "-", rule.category, type(rule).__name__))
+            rows.append({
+                "id": rule.id + "-*", "severity": "varies", "category": rule.category,
+                "title": type(rule).__name__, "references": [],
+            })
+
+    # Engine-level detections that run outside the rule registry.
+    rows.extend([
+        {"id": "AFW-DRIFT-*", "severity": "varies", "category": "rug-pull",
+         "title": "Baseline drift / rug pull (--baseline)",
+         "references": ["MCP:Rug-Pull", "OWASP-Agentic:Privilege-Compromise"]},
+        {"id": "AFW-PROV-*", "severity": "INFO", "category": "provenance",
+         "title": "Provenance / trust tier",
+         "references": ["SLSA:Provenance-and-Integrity", "SLSA:Unsigned-Artifact"]},
+        {"id": "AFW-IOC-*", "severity": "varies", "category": "threat-intel",
+         "title": "Threat-intel / IoC match (--intel)",
+         "references": ["Threat-Intel:Known-Malicious-IoC", "Threat-Intel:Revoked-Signer"]},
+    ])
 
     if getattr(args, "format", "text") == "json":
         import json
-        print(json.dumps([
-            {"id": r[0], "severity": r[1], "category": r[2], "title": r[3]} for r in rows
-        ], indent=2))
+        print(json.dumps(rows, indent=2))
         return 0
 
     print(f"AgentFirewall {__version__} — {len(rows)} detections\n")
-    width = max(len(r[0]) for r in rows)
-    for rid, sev, cat, title in rows:
-        print(f"  {rid:<{width}}  {sev:<8}  {cat:<15}  {title}")
+    width = max(len(r["id"]) for r in rows)
+    cat_w = max(len(r["category"]) for r in rows)
+    for r in rows:
+        print(f"  {r['id']:<{width}}  {r['severity']:<8}  {r['category']:<{cat_w}}  {r['title']}")
+
+    # Framework coverage summary.
+    frameworks: dict[str, int] = {}
+    for r in rows:
+        for ref in r["references"]:
+            fam = ref.split(":", 1)[0]
+            frameworks[fam] = frameworks.get(fam, 0) + 1
+    if frameworks:
+        print("\nFramework coverage (detections mapped):")
+        for fam in sorted(frameworks):
+            print(f"  {fam:<14} {frameworks[fam]}")
     return 0
+
+
+def cmd_run(args: argparse.Namespace) -> int:
+    from .runtime.egress import EgressPolicy
+    from .runtime.sandbox import run_guarded
+
+    command = _strip_dashes(args.command)
+    if not command:
+        _stderr("run: no command given — use:  afw run --allow HOST -- <command>")
+        return 1
+
+    # Bypass-proof isolation mode: no network at all, enforced by the kernel.
+    if args.isolate:
+        from .runtime.isolation import IsolationUnavailable, run_isolated
+        if args.allow:
+            _stderr("run: --isolate (bypass-proof, zero network) cannot be combined with "
+                    "--allow (proxy allowlist). Use --isolate for no network, or --allow "
+                    "for a filtered allowlist.")
+            return 1
+        try:
+            result = run_isolated(command, up_loopback=True)
+        except IsolationUnavailable as exc:
+            _stderr(f"run --isolate: {exc}")
+            return 1
+        if args.format == "json":
+            print(_json.dumps(result.to_dict(), indent=2))
+        else:
+            print(f"\nAgentFirewall isolation — {' '.join(command)}")
+            print(f"  method   : {result.method}")
+            print("  network  : DENIED (kernel-enforced; no external connectivity)")
+            print(f"  command exited {result.exit_code}")
+        return result.exit_code
+
+    policy = EgressPolicy.from_spec(
+        hosts=args.allow or [], ports=args.allow_port or [],
+        allow_loopback=args.allow_loopback)
+    report = run_guarded(command, policy)
+
+    if args.format == "json":
+        print(_json.dumps(report.to_dict(), indent=2))
+    else:
+        allowed, blocked = report.allowed(), report.blocked()
+        print(f"\nAgentFirewall egress firewall — {' '.join(command)}")
+        print(f"  allowlist : {', '.join(args.allow or []) or '(none)'}"
+              f"{'  +loopback' if args.allow_loopback else ''}")
+        print(f"  outbound  : {len(allowed)} allowed, {len(blocked)} blocked")
+        for a in report.attempts:
+            print(f"    {a}")
+        print(f"  command exited {report.exit_code}")
+    if args.fail_on_egress and report.blocked():
+        return 3
+    return report.exit_code
+
+
+def cmd_mcp_proxy(args: argparse.Namespace) -> int:
+    from .runtime.mcp_proxy import McpInspector, run_stdio_proxy
+
+    command = _strip_dashes(args.command)
+    if not command:
+        _stderr("mcp-proxy: no server command — use:  afw mcp-proxy -- <server cmd>")
+        return 1
+    inspector = McpInspector(action=args.action)
+
+    def on_event(is_c2s, decision) -> None:
+        if not decision.findings:
+            return
+        arrow = "client→server" if is_c2s else "server→client"
+        for f in decision.findings:
+            _stderr(f"[afw mcp {decision.action.upper():7}] {arrow}  "
+                    f"{f.rule_id}  {f.title}")
+
+    _stderr(f"[afw mcp] proxying {' '.join(command)} (action={args.action})")
+    rc = run_stdio_proxy(command, inspector, sys.stdin.buffer, sys.stdout.buffer,
+                         on_event=on_event)
+    _stderr(f"[afw mcp] server exited {rc}; {len(inspector.log)} finding(s) seen")
+    return rc
 
 
 # --------------------------------------------------------------------------- #
 # Helpers
 # --------------------------------------------------------------------------- #
+def _strip_dashes(command: list[str]) -> list[str]:
+    cmd = list(command or [])
+    if cmd and cmd[0] == "--":
+        cmd = cmd[1:]
+    return cmd
+
+
 def _install_copy(src: str, target: str) -> None:
     os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
     if os.path.isdir(src):
@@ -235,9 +400,22 @@ def build_parser() -> argparse.ArgumentParser:
         p.add_argument("--no-color", action="store_true", help="disable ANSI colour")
         p.add_argument("-v", "--verbose", action="store_true",
                        help="include remediation guidance")
+        # Provenance & threat-intel (Phase 3).
+        p.add_argument("--intel", action="append", metavar="PATH",
+                       help="additional IoC feed file/dir (JSON or txt; repeatable)")
+        p.add_argument("--no-intel", action="store_true",
+                       help="disable the bundled/default threat-intel feeds")
+        p.add_argument("--verify-signatures", action="store_true",
+                       help="attempt cryptographic signature verification (needs cosign)")
+        p.add_argument("--identity", metavar="ID",
+                       help="expected signer identity to verify against")
+        p.add_argument("--no-tighten-untrusted", action="store_true",
+                       help="do not tighten policy for unsigned/unpinned artifacts")
 
     p_scan = sub.add_parser("scan", help="scan artifacts and print a report")
     p_scan.add_argument("paths", nargs="+", help="files, directories or .zip archives")
+    p_scan.add_argument("--baseline", metavar="LOCK",
+                        help="afw.lock to diff against (detects rug-pull drift)")
     add_common(p_scan)
     p_scan.set_defaults(func=cmd_scan)
 
@@ -245,6 +423,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_verify.add_argument("paths", nargs="+")
     p_verify.add_argument("--fail-on-warn", action="store_true",
                           help="also fail when the verdict is WARN")
+    p_verify.add_argument("--baseline", metavar="LOCK",
+                          help="afw.lock to diff against (detects rug-pull drift)")
     add_common(p_verify)
     p_verify.set_defaults(func=cmd_verify)
 
@@ -256,8 +436,19 @@ def build_parser() -> argparse.ArgumentParser:
                            help="install even if BLOCKED (dangerous)")
     p_install.add_argument("--yes", action="store_true",
                            help="assume yes for WARN confirmations")
+    p_install.add_argument("--baseline", metavar="LOCK",
+                           help="afw.lock to diff against before installing")
     add_common(p_install)
     p_install.set_defaults(func=cmd_install)
+
+    p_pin = sub.add_parser("pin", help="record a trusted baseline (afw.lock) for an artifact")
+    p_pin.add_argument("path", help="artifact to pin (dir/file/zip)")
+    p_pin.add_argument("-o", "--output", metavar="LOCK",
+                       help="where to write the lock file (default: <artifact>/afw.lock)")
+    p_pin.add_argument("--force", action="store_true",
+                       help="pin even if the artifact is currently BLOCKED")
+    add_common(p_pin)
+    p_pin.set_defaults(func=cmd_pin)
 
     p_watch = sub.add_parser("watch", help="monitor a directory and scan new artifacts")
     p_watch.add_argument("directory")
@@ -267,6 +458,38 @@ def build_parser() -> argparse.ArgumentParser:
                          help="scan the current contents once and exit")
     add_common(p_watch)
     p_watch.set_defaults(func=cmd_watch)
+
+    p_run = sub.add_parser(
+        "run", help="run a command behind the egress firewall (default-deny outbound)")
+    p_run.add_argument("--allow", action="append", metavar="HOST",
+                       help="host or *.domain the command may reach (repeatable)")
+    p_run.add_argument("--allow-port", action="append", type=int, metavar="PORT",
+                       help="restrict allowed traffic to these ports (repeatable)")
+    p_run.add_argument("--allow-loopback", action="store_true",
+                       help="permit connections to localhost")
+    p_run.add_argument("--isolate", action="store_true",
+                       help="bypass-proof: run with NO network (kernel netns), not a proxy")
+    p_run.add_argument("--fail-on-egress", action="store_true",
+                       help="exit non-zero if any outbound connection was blocked")
+    p_run.add_argument("-f", "--format", choices=["text", "json"], default="text")
+    p_run.add_argument("command", nargs=argparse.REMAINDER,
+                       help="-- followed by the command to run")
+    p_run.set_defaults(func=cmd_run)
+
+    p_mcp = sub.add_parser(
+        "mcp-proxy", help="inspect an MCP server's tool calls/results in real time")
+    p_mcp.add_argument("--action", choices=["warn", "redact", "block"], default="block",
+                       help="what to do with a severe finding (default: block)")
+    p_mcp.add_argument("command", nargs=argparse.REMAINDER,
+                       help="-- followed by the MCP server command to wrap")
+    p_mcp.set_defaults(func=cmd_mcp_proxy)
+
+    p_serve = sub.add_parser("serve", help="launch the local web UI in a browser")
+    p_serve.add_argument("--host", default="127.0.0.1",
+                         help="address to bind (default: 127.0.0.1)")
+    p_serve.add_argument("--port", type=int, default=8000, help="port (default: 8000)")
+    p_serve.add_argument("--open", action="store_true", help="open a browser window")
+    p_serve.set_defaults(func=cmd_serve)
 
     p_rules = sub.add_parser("rules", help="list every detection")
     p_rules.add_argument("-f", "--format", choices=["text", "json"], default="text")

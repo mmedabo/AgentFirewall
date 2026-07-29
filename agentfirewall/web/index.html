@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="afw-token" content="{{TOKEN}}">
+<title>AgentFirewall</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --ink: #1c2024; --muted: #6b7280;
+    --line: #e5e7eb; --accent: #2563eb; --drop: #eef2ff;
+    --crit-bg:#7f1d1d; --crit-fg:#fff; --high:#dc2626; --med:#d97706;
+    --low:#2563eb; --info:#6b7280;
+    --allow:#16a34a; --warn:#d97706; --block:#dc2626;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0f1216; --panel:#171b21; --ink:#e6e9ee; --muted:#9aa4b2;
+      --line:#262c36; --accent:#60a5fa; --drop:#1a2030;
+      --crit-bg:#b91c1c; --high:#f87171; --med:#fbbf24; --low:#60a5fa; --info:#9aa4b2;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:#0f1216; --panel:#171b21; --ink:#e6e9ee; --muted:#9aa4b2;
+    --line:#262c36; --accent:#60a5fa; --drop:#1a2030;
+    --crit-bg:#b91c1c; --high:#f87171; --med:#fbbf24; --low:#60a5fa; --info:#9aa4b2;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 24px 16px 64px; }
+  header { display:flex; align-items:center; gap:12px; margin-bottom:4px; }
+  header .logo { font-size:28px; }
+  header h1 { font-size:22px; margin:0; font-weight:700; }
+  header .ver { color:var(--muted); font-size:13px; margin-left:auto; }
+  .sub { color:var(--muted); margin:0 0 20px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:18px; margin-bottom:18px; }
+  .drop { border:2px dashed var(--line); border-radius:12px; padding:34px 18px;
+    text-align:center; cursor:pointer; background:var(--panel); transition:.15s; }
+  .drop.over { border-color:var(--accent); background:var(--drop); }
+  .drop strong { color:var(--accent); }
+  .row { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:14px; }
+  .row input[type=text] { flex:1; min-width:220px; padding:9px 11px; border-radius:8px;
+    border:1px solid var(--line); background:var(--bg); color:var(--ink); }
+  label.chk { display:inline-flex; align-items:center; gap:6px; color:var(--muted); cursor:pointer; }
+  button { background:var(--accent); color:#fff; border:0; border-radius:8px;
+    padding:10px 18px; font-weight:600; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--accent); border:1px solid var(--line); }
+  button:disabled { opacity:.5; cursor:default; }
+  .files { color:var(--muted); font-size:13px; margin-top:10px; }
+  /* verdict banner */
+  .verdict { display:flex; align-items:center; gap:14px; border-radius:12px;
+    padding:16px 18px; color:#fff; font-weight:700; font-size:18px; }
+  .verdict.allow { background:var(--allow); }
+  .verdict.warn  { background:var(--warn); }
+  .verdict.block { background:var(--block); }
+  .verdict .icon { font-size:24px; }
+  .meta { display:flex; flex-wrap:wrap; gap:10px 22px; color:var(--muted);
+    font-size:13.5px; margin:14px 2px; }
+  .meta b { color:var(--ink); font-weight:600; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0 4px; }
+  .chip { font-size:12px; font-weight:700; padding:3px 9px; border-radius:20px; color:#fff; }
+  .sev-CRITICAL{background:var(--crit-bg);} .sev-HIGH{background:var(--high);}
+  .sev-MEDIUM{background:var(--med);} .sev-LOW{background:var(--low);} .sev-INFO{background:var(--info);}
+  .finding { border:1px solid var(--line); border-left-width:4px; border-radius:10px;
+    padding:12px 14px; margin:10px 0; background:var(--panel); }
+  .finding h3 { margin:0 0 4px; font-size:15px; display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; }
+  .finding .rid { color:var(--muted); font-weight:500; font-size:12.5px; }
+  .finding p { margin:4px 0; }
+  .finding .loc { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px; color:var(--muted); }
+  .finding .ev { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px;
+    background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:6px 8px; overflow-x:auto; }
+  .finding .refs { font-size:11.5px; color:var(--muted); margin-top:6px; }
+  .finding .fix { font-size:13px; color:var(--muted); margin-top:6px; }
+  .lc-CRITICAL{border-left-color:var(--crit-bg);} .lc-HIGH{border-left-color:var(--high);}
+  .lc-MEDIUM{border-left-color:var(--med);} .lc-LOW{border-left-color:var(--low);} .lc-INFO{border-left-color:var(--info);}
+  .empty { color:var(--muted); text-align:center; padding:16px; }
+  .err { color:#fff; background:var(--block); padding:12px 14px; border-radius:10px; }
+  .spinner { display:inline-block; width:16px; height:16px; border:2px solid rgba(255,255,255,.4);
+    border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; vertical-align:-3px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .foot { color:var(--muted); font-size:12.5px; text-align:center; margin-top:26px; }
+  a { color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="logo">🛡️</span>
+    <h1>AgentFirewall</h1>
+    <span class="ver">v{{VERSION}}</span>
+  </header>
+  <p class="sub">Scan an AI agent, skill or MCP server before you trust it. Everything runs locally.</p>
+
+  <div class="panel">
+    <div id="drop" class="drop">
+      <div>Drop a <strong>skill folder</strong> or <strong>.zip</strong> here, or
+        <strong>click to choose</strong>.</div>
+      <div class="files" id="fileinfo">No files selected.</div>
+      <input id="pick" type="file" multiple webkitdirectory directory hidden>
+      <input id="pickzip" type="file" accept=".zip" hidden>
+    </div>
+    <div class="row">
+      <input id="path" type="text" placeholder="…or a path on this machine, e.g. examples/malicious-skill">
+    </div>
+    <div class="row">
+      <label class="chk"><input type="checkbox" id="strict"> Strict policy (block on MEDIUM+)</label>
+      <label class="chk"><input type="checkbox" id="intel" checked> Use threat-intel feeds</label>
+      <button id="scan">Scan</button>
+      <button class="ghost" id="choosefiles">Choose files instead</button>
+    </div>
+  </div>
+
+  <div id="out"></div>
+
+  <p class="foot">AgentFirewall is a defensive tool — review HIGH/CRITICAL findings yourself.
+    Static analysis never executes what it scans.</p>
+</div>
+
+<script>
+const TOKEN = document.querySelector('meta[name=afw-token]').content;
+const $ = s => document.querySelector(s);
+let selectedFiles = [];
+
+const drop = $('#drop'), fileinfo = $('#fileinfo');
+const pick = $('#pick'), pickzip = $('#pickzip');
+
+drop.addEventListener('click', () => pick.click());
+$('#choosefiles').addEventListener('click', e => { e.stopPropagation(); pickzip.click(); });
+['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => {
+  e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => {
+  e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', async e => { await collect(e.dataTransfer); });
+pick.addEventListener('change', () => setFiles([...pick.files]));
+pickzip.addEventListener('change', () => setFiles([...pickzip.files]));
+
+async function collect(dt) {
+  const items = dt.items ? [...dt.items] : [];
+  const entries = items.map(i => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean);
+  if (entries.length && entries.some(en => en.isDirectory)) {
+    const files = [];
+    for (const en of entries) await walk(en, files);
+    setFiles(files);
+  } else {
+    setFiles([...dt.files]);
+  }
+}
+function walk(entry, out, prefix='') {
+  return new Promise(res => {
+    if (entry.isFile) {
+      entry.file(f => { f._rel = prefix + entry.name; out.push(f); res(); });
+    } else if (entry.isDirectory) {
+      const rd = entry.createReader();
+      rd.readEntries(async ents => {
+        for (const e of ents) await walk(e, out, prefix + entry.name + '/');
+        res();
+      });
+    } else res();
+  });
+}
+function setFiles(files) {
+  selectedFiles = files;
+  $('#path').value = '';
+  fileinfo.textContent = files.length
+    ? `${files.length} file${files.length>1?'s':''} selected.` : 'No files selected.';
+}
+
+function relPath(f) {
+  return f._rel || f.webkitRelativePath || f.name;
+}
+function readB64(f) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result).split(',')[1] || '');
+    r.onerror = rej;
+    r.readAsDataURL(f);
+  });
+}
+
+$('#scan').addEventListener('click', run);
+async function run() {
+  const btn = $('#scan'); btn.disabled = true;
+  const orig = btn.textContent; btn.innerHTML = '<span class="spinner"></span> Scanning';
+  const out = $('#out'); out.innerHTML = '';
+  try {
+    const payload = { strict: $('#strict').checked, intel: $('#intel').checked };
+    const path = $('#path').value.trim();
+    if (path) {
+      payload.path = path;
+    } else if (selectedFiles.length) {
+      payload.name = topName(selectedFiles);
+      payload.files = [];
+      for (const f of selectedFiles) payload.files.push({ path: relPath(f), b64: await readB64(f) });
+    } else {
+      out.innerHTML = '<div class="panel empty">Choose a folder/zip or enter a path first.</div>';
+      return;
+    }
+    const resp = await fetch('/api/scan', {
+      method: 'POST', headers: { 'Content-Type':'application/json', 'X-AFW-Token': TOKEN },
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error) throw new Error(data.error || ('HTTP ' + resp.status));
+    render(data);
+  } catch (e) {
+    out.innerHTML = `<div class="err">Scan failed: ${escapeHtml(e.message)}</div>`;
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
+}
+function topName(files) {
+  const p = relPath(files[0]); return (p.split('/')[0]) || 'uploaded-artifact';
+}
+
+const SEVS = ['CRITICAL','HIGH','MEDIUM','LOW','INFO'];
+function render(d) {
+  const v = d.verdict;
+  const icon = v === 'block' ? '✗' : v === 'warn' ? '!' : '✓';
+  const counts = d.counts || {};
+  const chips = SEVS.filter(s => counts[s]).map(s =>
+    `<span class="chip sev-${s}">${s} ${counts[s]}</span>`).join('');
+  const a = d.artifact || {};
+  let html = `
+    <div class="verdict ${v}"><span class="icon">${icon}</span>
+      VERDICT: ${v.toUpperCase()}</div>
+    <div class="meta">
+      <span><b>${escapeHtml(a.name||'artifact')}</b> · ${escapeHtml(a.kind||'')}</span>
+      <span>${a.files_scanned||0} files scanned</span>
+      <span>trust: <b>${escapeHtml(d.trust_tier||'')}</b></span>
+    </div>
+    <div class="chips">${chips || '<span class="chip sev-INFO">no findings</span>'}</div>`;
+
+  if (d.error) html += `<div class="err">Error: ${escapeHtml(d.error)}</div>`;
+
+  const findings = d.findings || [];
+  if (!findings.length) {
+    html += '<div class="panel empty">No findings.</div>';
+  } else {
+    html += findings.map(f => `
+      <div class="finding lc-${f.severity}">
+        <h3><span class="chip sev-${f.severity}">${f.severity}</span>
+          ${escapeHtml(f.title)} <span class="rid">${escapeHtml(f.rule_id)} · ${escapeHtml(f.category)}</span></h3>
+        <p>${escapeHtml(f.message)}</p>
+        ${f.path ? `<div class="loc">→ ${escapeHtml(f.path)}${f.line?(':'+f.line):''}</div>` : ''}
+        ${f.evidence ? `<div class="ev">${escapeHtml(f.evidence)}</div>` : ''}
+        ${(f.references&&f.references.length) ? `<div class="refs">ⓘ ${f.references.map(escapeHtml).join(' · ')}</div>` : ''}
+        ${f.remediation ? `<div class="fix">fix: ${escapeHtml(f.remediation)}</div>` : ''}
+      </div>`).join('');
+  }
+  $('#out').innerHTML = html;
+}
+function escapeHtml(s) {
+  return String(s==null?'':s).replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+</script>
+</body>
+</html>

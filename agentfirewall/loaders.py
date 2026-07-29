@@ -11,8 +11,10 @@ agentfirewall`` pulls in nothing.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import re
 import zipfile
 from typing import Any, Iterable
 
@@ -26,6 +28,8 @@ _BINARY_EXTS = {
 }
 # Directories that are noise, not artifact content.
 _SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv", ".mypy_cache"}
+# Files that are AgentFirewall's own metadata, not part of the artifact.
+_SKIP_FILES = {"afw.lock"}
 
 _MAX_FILE_BYTES = 2_000_000  # 2 MB: bigger text files are almost always data.
 
@@ -55,6 +59,8 @@ def _load_dir(root: str) -> Artifact:
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [d for d in dirnames if d not in _SKIP_DIRS]
         for name in filenames:
+            if name in _SKIP_FILES:
+                continue
             full = os.path.join(dirpath, name)
             rel = os.path.relpath(full, root)
             files.append(_read_file(rel, full))
@@ -68,7 +74,8 @@ def _load_zip(path: str) -> Artifact:
         for info in zf.infolist():
             if info.is_dir():
                 continue
-            if any(part in _SKIP_DIRS for part in info.filename.split("/")):
+            parts = info.filename.split("/")
+            if any(part in _SKIP_DIRS for part in parts) or parts[-1] in _SKIP_FILES:
                 continue
             data = zf.read(info) if info.file_size <= _MAX_FILE_BYTES else b""
             files.append(_read_bytes(info.filename, data,
@@ -86,26 +93,41 @@ def _load_single(path: str) -> Artifact:
 # File reading
 # --------------------------------------------------------------------------- #
 def _read_file(rel: str, full: str) -> ScannedFile:
+    role = _role_for(rel)
     try:
         size = os.path.getsize(full)
     except OSError:
         size = 0
+    # Large or clearly-binary files: stream-hash them but don't load as text.
     if _looks_binary(rel) or size > _MAX_FILE_BYTES:
-        return ScannedFile(path=rel, text="", is_binary=True, role=_role_for(rel))
+        return ScannedFile(path=rel, text="", is_binary=True, role=role,
+                           sha256=_hash_path(full))
     try:
         with open(full, "rb") as fh:
             data = fh.read()
     except OSError:
-        return ScannedFile(path=rel, text="", is_binary=True, role=_role_for(rel))
+        return ScannedFile(path=rel, text="", is_binary=True, role=role)
     return _read_bytes(rel, data)
 
 
 def _read_bytes(rel: str, data: bytes, truncated: bool = False) -> ScannedFile:
     role = _role_for(rel)
+    digest = hashlib.sha256(data).hexdigest() if data else ""
     if _looks_binary(rel) or b"\x00" in data[:8192] or truncated:
-        return ScannedFile(path=rel, text="", is_binary=True, role=role)
+        return ScannedFile(path=rel, text="", is_binary=True, role=role, sha256=digest)
     text = data.decode("utf-8", errors="replace")
-    return ScannedFile(path=rel, text=text, is_binary=False, role=role)
+    return ScannedFile(path=rel, text=text, is_binary=False, role=role, sha256=digest)
+
+
+def _hash_path(full: str) -> str:
+    h = hashlib.sha256()
+    try:
+        with open(full, "rb") as fh:
+            for chunk in iter(lambda: fh.read(65536), b""):
+                h.update(chunk)
+    except OSError:
+        return ""
+    return h.hexdigest()
 
 
 def _looks_binary(rel: str) -> bool:
@@ -203,16 +225,61 @@ def _parse_frontmatter(text: str) -> dict[str, Any]:
     return out
 
 
+_SECRET_ENV_HINT = re.compile(r"(key|token|secret|password|passwd|credential)", re.IGNORECASE)
+
+
 def _parse_mcp(text: str, artifact: Artifact) -> None:
     try:
         data = json.loads(text)
     except (json.JSONDecodeError, ValueError):
         return
-    servers = {}
-    if isinstance(data, dict):
-        servers = data.get("mcpServers") or data.get("servers") or {}
+    if not isinstance(data, dict):
+        return
+    servers = data.get("mcpServers") or data.get("servers") or {}
     if isinstance(servers, dict) and servers:
         artifact.metadata.setdefault("mcp_servers", list(servers.keys()))
+
+    risks = artifact.metadata.setdefault("mcp_risks", [])
+    tool_descs = artifact.metadata.setdefault("tool_descriptions", [])
+
+    if isinstance(servers, dict):
+        for sname, cfg in servers.items():
+            if not isinstance(cfg, dict):
+                continue
+            env = cfg.get("env")
+            if isinstance(env, dict):
+                for k, v in env.items():
+                    if _SECRET_ENV_HINT.search(str(k)) and str(v).strip() and \
+                            not str(v).startswith("${"):
+                        risks.append({
+                            "rule_id": "AFW-MCP-001",
+                            "title": "Secret hard-coded in MCP server env",
+                            "severity": "HIGH",
+                            "message": f"MCP server '{sname}' embeds a secret in its env "
+                                       f"('{k}') instead of referencing it indirectly.",
+                            "evidence": f"{k}=<redacted>",
+                            "remediation": "Reference secrets via ${ENV_VAR}; never inline them.",
+                        })
+            for key in ("autoApprove", "alwaysAllow", "auto_approve"):
+                approved = cfg.get(key)
+                if approved:
+                    risks.append({
+                        "rule_id": "AFW-MCP-002",
+                        "title": "MCP server auto-approves tool calls",
+                        "severity": "MEDIUM",
+                        "message": f"MCP server '{sname}' sets '{key}', letting tools run "
+                                   "without per-call confirmation.",
+                        "evidence": f"{key}: {approved}",
+                        "remediation": "Require explicit approval for tool calls.",
+                    })
+
+    # Tool descriptions can appear in server-manifest style configs.
+    tools = data.get("tools")
+    if isinstance(tools, list):
+        for t in tools:
+            if isinstance(t, dict) and t.get("description"):
+                tool_descs.append({"name": t.get("name", "?"),
+                                   "text": str(t["description"])})
 
 
 def _as_list(value: Any) -> list[str]:

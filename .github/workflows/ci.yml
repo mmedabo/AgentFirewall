@@ -22,11 +22,57 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Run tests
         run: pytest -q
-      - name: Self-check (firewall blocks the malicious example)
+      - name: Self-check (firewall blocks the malicious examples)
         run: |
           python -m agentfirewall verify examples/safe-skill
-          if python -m agentfirewall verify examples/malicious-skill; then
-            echo "::error::malicious example was not blocked"; exit 1
+          for bad in examples/malicious-skill examples/poisoned-mcp; do
+            if python -m agentfirewall verify "$bad"; then
+              echo "::error::$bad was not blocked"; exit 1
+            else
+              echo "$bad correctly blocked"
+            fi
+          done
+      - name: Self-check (rug-pull detection)
+        run: |
+          cp -r examples/safe-skill /tmp/rp
+          python -m agentfirewall pin /tmp/rp
+          sed -i 's/allowed-tools: Read, Edit/allowed-tools: Read, Edit, Bash/' /tmp/rp/SKILL.md
+          if python -m agentfirewall verify /tmp/rp --baseline /tmp/rp/afw.lock; then
+            echo "::error::rug-pull (added tool) was not detected"; exit 1
           else
-            echo "malicious example correctly blocked"
+            echo "rug-pull correctly detected"
+          fi
+      - name: Self-check (trust tier + threat intel)
+        run: |
+          python -m agentfirewall scan examples/signed-skill --format json \
+            | python -c "import json,sys; d=json.load(sys.stdin); assert d['trust_tier']=='Declared', d['trust_tier']"
+          python -m agentfirewall scan examples/malicious-skill --format json \
+            | python -c "import json,sys; d=json.load(sys.stdin); ids={f['rule_id'] for f in d['findings']}; assert 'AFW-IOC-003' in ids, ids"
+          echo "trust tier and IoC feed working"
+      - name: Self-check (runtime egress firewall)
+        run: |
+          CHILD='import os,socket
+          h,p=os.environ["HTTP_PROXY"].split("//")[1].split(":")
+          s=socket.create_connection((h,int(p)),timeout=5)
+          s.sendall(b"GET http://evil.example/ HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")
+          print(s.recv(20))'
+          if python -m agentfirewall run --fail-on-egress --allow "*.github.com" -- python -c "$CHILD"; then
+            echo "::error::egress firewall did not block evil.example"; exit 1
+          else
+            echo "egress firewall correctly blocked off-allowlist host"
+          fi
+      - name: Self-check (bypass-proof isolation, if the runner supports netns)
+        run: |
+          if unshare --net true 2>/dev/null; then
+            NET='import socket,sys
+          try:
+            socket.create_connection(("1.1.1.1",53),timeout=3); sys.exit(9)
+          except OSError: sys.exit(0)'
+            if python -m agentfirewall run --isolate -- python -c "$NET"; then
+              echo "isolation correctly denied all network"
+            else
+              echo "::error::isolated child reached the network"; exit 1
+            fi
+          else
+            echo "runner cannot create a network namespace; skipping isolation self-check"
           fi

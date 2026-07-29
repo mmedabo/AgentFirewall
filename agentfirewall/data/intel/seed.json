@@ -1,0 +1,16 @@
+{
+  "_comment": "Illustrative starter IoC feed shipped with AgentFirewall. These are demo/reserved values used by the example artifacts and docs, NOT a real threat feed. Point `afw scan --intel <path>` at your own maintained feeds, or drop files into ~/.config/agentfirewall/intel/. Formats: this JSON schema, or names.txt / domains.txt / hashes.txt / signers.txt.",
+  "names": [
+    "super-helpr",
+    "definitely-not-malware"
+  ],
+  "domains": [
+    "evil.example",
+    "stage2.example",
+    "exfil.example"
+  ],
+  "hashes": [],
+  "signers": [
+    "attacker@evil.example"
+  ]
+}

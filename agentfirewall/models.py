@@ -48,6 +48,23 @@ class Verdict(enum.Enum):
         return {Verdict.ALLOW: 0, Verdict.WARN: 0, Verdict.BLOCK: 2}[self]
 
 
+class TrustTier(enum.IntEnum):
+    """How much independent provenance backs an artifact.
+
+    Higher == more trustworthy. Drives policy: an ``UNTRUSTED`` artifact (no
+    signature, no attestation, not locally pinned) is held to a stricter bar.
+    """
+
+    UNTRUSTED = 0  # no provenance signals at all
+    DECLARED = 1   # signature/attestation/SBOM files present but NOT verified
+    PINNED = 2     # user holds a local baseline (afw.lock) for it
+    VERIFIED = 3   # a signature was cryptographically verified
+
+    @property
+    def label(self) -> str:
+        return self.name.title()
+
+
 @dataclass(frozen=True)
 class Finding:
     """A single suspicious thing discovered in an artifact."""
@@ -61,6 +78,9 @@ class Finding:
     line: int = 0
     evidence: str = ""
     remediation: str = ""
+    #: External framework references this detection maps to, e.g.
+    #: ("OWASP-LLM01", "MITRE-ATLAS:AML.T0051", "MCP:tool-poisoning").
+    references: tuple[str, ...] = ()
 
     def location(self) -> str:
         if self.path and self.line:
@@ -78,6 +98,7 @@ class Finding:
             "line": self.line,
             "evidence": self.evidence,
             "remediation": self.remediation,
+            "references": list(self.references),
         }
 
 
@@ -89,6 +110,7 @@ class ScannedFile:
     text: str
     is_binary: bool = False
     role: str = "file"  # e.g. "manifest", "script", "doc", "config"
+    sha256: str = ""  # content hash, used for baseline/rug-pull diffing
 
     @property
     def lines(self) -> list[str]:
@@ -114,6 +136,8 @@ class ScanResult:
     findings: list[Finding] = field(default_factory=list)
     verdict: Verdict = Verdict.ALLOW
     error: Optional[str] = None
+    trust_tier: TrustTier = TrustTier.UNTRUSTED
+    provenance: Optional[dict[str, Any]] = None
 
     @property
     def max_severity(self) -> Optional[Severity]:
@@ -137,6 +161,8 @@ class ScanResult:
                 "metadata": self.artifact.metadata,
             },
             "verdict": self.verdict.value,
+            "trust_tier": self.trust_tier.label,
+            "provenance": self.provenance,
             "max_severity": self.max_severity.label if self.max_severity else None,
             "counts": self.counts(),
             "findings": [f.to_dict() for f in self.findings],

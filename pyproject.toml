@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentfirewall"
-version = "0.1.0"
+version = "0.6.0"
 description = "A security firewall for AI agents, skills and MCP servers — scan before you install."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -37,6 +37,9 @@ agentfirewall = "agentfirewall.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["agentfirewall*"]
+
+[tool.setuptools.package-data]
+agentfirewall = ["data/intel/*.json", "data/intel/*.txt", "web/*.html"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

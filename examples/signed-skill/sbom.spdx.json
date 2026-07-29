@@ -1,0 +1,19 @@
+{
+  "spdxVersion": "SPDX-2.3",
+  "dataLicense": "CC0-1.0",
+  "name": "json-formatter",
+  "documentNamespace": "https://example.com/spdx/json-formatter",
+  "creationInfo": {
+    "created": "2026-01-01T00:00:00Z",
+    "creators": ["Tool: example-sbom-generator"]
+  },
+  "packages": [
+    {
+      "name": "json-formatter",
+      "SPDXID": "SPDXRef-Package-json-formatter",
+      "versionInfo": "1.0.0",
+      "downloadLocation": "NOASSERTION",
+      "licenseConcluded": "MIT"
+    }
+  ]
+}

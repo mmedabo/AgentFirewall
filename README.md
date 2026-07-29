@@ -28,14 +28,27 @@ too high — with a clear, auditable report of exactly why.
 | Category | Examples |
 |---|---|
 | 🔑 **Secret & credential theft** | reading `~/.ssh`, `~/.aws/credentials`, `.env`, dumping the environment, targeting `ANTHROPIC_API_KEY` / `GITHUB_TOKEN` |
+| 🎫 **Embedded credentials** | private keys, AWS `AKIA…`, GitHub `ghp_…`, OpenAI/Anthropic `sk-…`, Slack tokens shipped *inside* the artifact |
 | 📡 **Data exfiltration** | uploads to pastebin/`webhook.site`/Discord webhooks, raw-IP egress, reverse shells, DNS-tunnel exfiltration |
 | 🧬 **Obfuscation & dynamic exec** | `curl … \| bash`, `base64 -d \| sh`, `eval`/`exec` on runtime strings, hex-encoded payloads |
+| 🥫 **Unsafe deserialization** | `pickle.load`, `torch.load`, unsafe `yaml.load`, bundled `.pkl`/`.pt` weight files (model poisoning) |
 | 💣 **Destructive actions** | `rm -rf ~/`, `mkfs`, fork bombs, `chmod 777`, disabling firewalls/TLS, crypto-miners, cron/autostart persistence |
+| 🕵️ **Anti-forensics** | clearing shell history, deleting `/var/log`, `unset HISTFILE` |
 | 🧠 **Prompt injection** | "ignore previous instructions", "do not tell the user", "you are now in developer mode", instructions to exfiltrate secrets |
+| 🪝 **Tool poisoning** | hidden directives inside MCP/tool **descriptions**, MCP `env` secrets, auto-approve flags |
+| 🧬 **Memory / context poisoning** | writes to `CLAUDE.md`, `.cursorrules`, MCP config and other files other agents auto-load |
 | 👻 **Hidden content** | zero-width characters, bidirectional-override tricks, invisible Unicode-Tag instructions, high-entropy packed blobs |
 | 🎛️ **Permission overreach** | skills/agents granting themselves `tools: "*"`, unrestricted `Bash(*)`, silent install hooks |
+| 🎭 **Typosquatting** | homoglyph/look-alike names, one-edit near-misses of popular packages |
+| 🔁 **Rug pulls** *(stateful)* | a pinned artifact whose files, tools, permissions or tool descriptions **silently change** in a later update |
+| 📜 **Weak provenance** | unsigned / unattested artifacts get a lower **trust tier** that tightens the policy applied to them |
+| 🚫 **Known-bad IoCs** | artifact name, file hash, contacted domain or signer identity on a threat-intel feed |
 
-Run `afw rules` to see every detection with its ID and severity.
+Every detection is mapped to an industry framework — **OWASP Top 10 for LLM Apps**,
+**OWASP Top 10 for Agentic Apps**, **MITRE ATLAS**, **MCP threat research** and
+**SLSA/supply-chain**. Run `afw rules` to see each detection with its ID, severity,
+and framework coverage. See [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) for the
+full mapping and [`docs/ROADMAP.md`](docs/ROADMAP.md) for where this is going.
 
 ---
 
@@ -99,11 +112,96 @@ afw watch ~/Downloads/agents
 afw verify ./my-published-skill --format sarif > results.sarif
 ```
 
+**Pin a trusted version, then catch rug pulls on every update:**
+
+```bash
+afw pin ./some-skill                       # writes ./some-skill/afw.lock
+# ... later, after the author ships an update ...
+afw verify ./some-skill --baseline ./some-skill/afw.lock
+# ✗ CRITICAL  Tool grant added since baseline   [AFW-DRIFT-010]
+#   HIGH      Baselined file changed            [AFW-DRIFT-001]
+```
+
+A previously-clean tool whose **permissions or description silently changed** is,
+by itself, the alarm — even if the new code contains no known-bad signature. This
+is how AgentFirewall catches the attacks static scanning can't: rug pulls and
+insider updates (like the Postmark BCC incident) that ship clean and mutate later.
+
+**Trust tiers & threat intel — treat unknown sources with more suspicion:**
+
+Like a firewall's trust zones, AgentFirewall assigns each artifact a **trust tier**
+from the provenance it can find, and holds low-trust artifacts to a stricter bar:
+
+```
+UNTRUSTED  no signature / attestation / baseline   → block threshold tightens
+DECLARED   signature or SBOM present (unverified)
+PINNED     you hold a local afw.lock for it         → afw pin
+VERIFIED   signature cryptographically verified      → --verify-signatures --identity <id>
+```
+
+```bash
+afw scan ./skill                       # trust: Untrusted  (unsigned → stricter policy)
+afw scan ./skill --intel ./my-iocs/    # also match names/hashes/domains/signers vs your feeds
+```
+
+Threat-intel feeds are **offline by default** (JSON or `names.txt`/`domains.txt`/
+`hashes.txt`/`signers.txt`); drop your own into `~/.config/agentfirewall/intel/`.
+A hit on a known-malicious name, file hash, domain or revoked signer is `AFW-IOC-*`.
+
+**Runtime firewall — watch it *while it runs*, not just before:**
+
+Static scanning can't stop a payload it didn't recognise. The runtime layer does —
+by controlling what the agent can actually reach and say at run time.
+
+```bash
+# Egress firewall: default-deny outbound; only github.com gets through.
+afw run --allow "*.github.com" -- npx some-agent
+#   BLOCK HTTP    evil.example:80
+#   ALLOW HTTP    api.github.com:443
+
+# MCP tool-call proxy: inspect/redact/block an MCP server's traffic in real time.
+afw mcp-proxy -- npx some-mcp-server
+#   [afw mcp BLOCK  ] client→server  AFW-SEC-001  Reads SSH private keys
+#   [afw mcp REDACT ] server→client  AFW-TPZ-001  Tool description contains hidden directive
+```
+
+`afw run` routes the command's outbound HTTP(S) through a default-deny filtering
+proxy — anything off the allowlist gets a `403` and is logged (`--fail-on-egress`
+for CI). `afw mcp-proxy` mediates the JSON-RPC channel between an agent and an MCP
+server, catching **tool poisoning** in `tools/list`, **secret egress** in
+`tools/call` arguments, and **injected instructions** in tool results — forwarding,
+redacting, or blocking per `--action`.
+
+**Bypass-proof isolation — run untrusted install hooks with *zero* network:**
+
+```bash
+afw run --isolate -- bash setup.sh
+#   method  : unshare (root netns)
+#   network : DENIED (kernel-enforced; no external connectivity)
+```
+
+`--isolate` runs the command in a **kernel network namespace** with no external
+interface, so it physically cannot reach anything — even via raw sockets. This is
+the bypass-proof complement to the proxy: use `--allow` for a filtered allowlist
+(governs proxy-respecting clients), or `--isolate` for hard zero-network
+containment (kernel-enforced, refuses if the host can't isolate). Uses `unshare`
+or `bubblewrap` when available. See [`docs/ROADMAP.md`](docs/ROADMAP.md) for what's
+still open (bypass-proof *allowlisting*).
+
+**Prefer a browser?** `afw serve` opens a local web UI — drag-drop a skill folder
+or `.zip` and read the verdict, trust tier and findings, no terminal required.
+
+```bash
+afw serve --open        # http://127.0.0.1:8000 (runs locally, nothing is uploaded)
+```
+
 Try it right now against the bundled examples:
 
 ```bash
-afw scan examples/safe-skill        # ✓ ALLOW
-afw scan examples/malicious-skill   # ✗ BLOCK  (a catalogue of bad behaviour)
+afw scan examples/safe-skill        # ✓ ALLOW  (trust: Untrusted)
+afw scan examples/signed-skill      # ✓ ALLOW  (trust: Declared — signature + SBOM)
+afw scan examples/malicious-skill   # ✗ BLOCK  (a catalogue of bad behaviour + IoC hit)
+afw scan examples/poisoned-mcp      # ✗ BLOCK  (MCP tool poisoning + env secrets)
 ```
 
 ---
@@ -115,11 +213,17 @@ afw scan examples/malicious-skill   # ✗ BLOCK  (a catalogue of bad behaviour)
 | `afw scan <path>...` | Inspect artifacts and print a report. Exit code reflects the worst verdict. |
 | `afw verify <path>...` | CI gate. Exit `2` if any artifact is **BLOCK** (`--fail-on-warn` to also fail on warnings). |
 | `afw install <path> --to <dir>` | Pre-check, then copy into place **only if it passes** the firewall. |
+| `afw pin <path>` | Record a trusted baseline (`afw.lock`) for later rug-pull detection. |
+| `afw run --allow <host> -- <cmd>` | Run a command behind a **default-deny egress firewall** (block exfiltration). |
+| `afw mcp-proxy -- <server>` | Sit in front of an MCP server and **inspect/redact/block tool calls & results** live. |
+| `afw serve` | Launch the **local web UI** — drag-drop a folder/zip and read the report in a browser. |
 | `afw watch <dir>` | Poll a directory and scan new/modified artifacts as they appear. |
-| `afw rules` | List every detection with ID, severity, and category. |
+| `afw rules` | List every detection with ID, severity, category, and framework coverage. |
 
 Common flags: `--format text|json|sarif`, `--policy <file>`, `--strict`,
-`--fail-on <SEVERITY>`, `--ignore <RULE_ID>`, `--no-color`, `-v/--verbose`.
+`--fail-on <SEVERITY>`, `--ignore <RULE_ID>`, `--baseline <lock>`, `--intel <path>`,
+`--no-intel`, `--verify-signatures --identity <id>`, `--no-tighten-untrusted`,
+`--no-color`, `-v/--verbose`.
 
 Artifacts can be a **directory**, a **single file**, or a **`.zip` archive**.
 
@@ -193,9 +297,22 @@ if result.verdict is Verdict.BLOCK:
    invisible Unicode, entropy analysis, and permission overreach.
 3. **Policy** maps findings to a verdict you can gate installation on.
 
-It's **static analysis** — it reads artifacts, it never executes them. That means
-it's safe to point at untrusted content, but (like any scanner) it's a strong
-first line of defence, not a guarantee. Review `HIGH`/`CRITICAL` findings yourself.
+Modelled on a real firewall's layered stack, AgentFirewall works in three tiers:
+
+```
+PRE-INSTALL (static)     scan code, manifests and model-facing text   → afw scan
+INSTALL-TIME (stateful)  pin a baseline; re-verify every update        → afw pin / --baseline
+TRUST ZONE (provenance)  signatures / SBOM / trust tiers / IoC feeds   → afw scan --intel
+RUNTIME (dynamic)        egress firewall + tool-call proxy             → afw run / afw mcp-proxy
+```
+
+All four tiers ship today. The first three are **static analysis + stateful
+diffing** — they read artifacts, never execute them, so they're safe to point at
+untrusted content. The runtime tier watches execution: it never needs to trust the
+code because it controls what the running process can reach and say. Like any
+firewall it's defence in depth, not a single guarantee — review `HIGH`/`CRITICAL`
+findings yourself. See [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) for the full
+firewall-mechanics mapping.
 
 ---
 
@@ -218,6 +335,38 @@ it to the registry in `agentfirewall/rules/__init__.py`. See
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
+
+## Use it in CI (GitHub Action)
+
+Gate your own repo's skills/agents on every push with the reusable action:
+
+```yaml
+# .github/workflows/agentfirewall.yml
+name: AgentFirewall
+on: [push, pull_request]
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mmedabo/agentfirewall@v0.6.0
+        with:
+          path: ./skills
+          args: --strict          # optional: block on MEDIUM+ ; or --format sarif
+```
+
+The step fails the build if any artifact is **BLOCK** (`command: scan` reports
+without failing). See [`action.yml`](action.yml) for all inputs.
+
+## Documentation
+
+| Doc | What's in it |
+|---|---|
+| [`docs/USAGE.md`](docs/USAGE.md) | Task-oriented cookbook for every command, incl. the web UI |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Module map, data flow, and how to extend each layer |
+| [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) | Threat model, firewall-mechanics mapping, rule→framework table |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Phases 0–5: what's shipped and what's planned |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) · [`SECURITY.md`](SECURITY.md) | Adding detections; reporting bypasses |
 
 ## Development
 

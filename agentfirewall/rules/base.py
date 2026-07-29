@@ -56,6 +56,8 @@ class Signature:
     #: Only flag when the regex matches; optional second regex that must ALSO be
     #: present somewhere in the same file for the finding to fire (context gate).
     requires_also: Pattern[str] | None = None
+    #: Framework identifiers this signature maps to (see agentfirewall.frameworks).
+    references: tuple[str, ...] = ()
 
 
 def compile_sig(
@@ -67,6 +69,7 @@ def compile_sig(
     remediation: str = "",
     flags: int = re.IGNORECASE,
     requires_also: str | None = None,
+    references: tuple[str, ...] = (),
 ) -> Signature:
     return Signature(
         id=id,
@@ -76,6 +79,7 @@ def compile_sig(
         message=message,
         remediation=remediation,
         requires_also=re.compile(requires_also, flags) if requires_also else None,
+        references=references,
     )
 
 
@@ -88,11 +92,15 @@ class PatternRule(Rule):
         category: str,
         signatures: Sequence[Signature],
         file_roles: tuple[str, ...] = (),
+        default_references: tuple[str, ...] = (),
     ) -> None:
         self.id = id
         self.category = category
         self.signatures = list(signatures)
         self.file_roles = file_roles
+        #: Applied to any signature in this rule that declares no references of
+        #: its own, so a whole category can share a framework mapping.
+        self.default_references = default_references
 
     def check(self, artifact: Artifact) -> Iterator[Finding]:
         for sf in artifact.files:
@@ -115,6 +123,7 @@ class PatternRule(Rule):
                         line=lineno,
                         evidence=_snippet(line, m),
                         remediation=sig.remediation,
+                        references=sig.references or self.default_references,
                     )
 
 
