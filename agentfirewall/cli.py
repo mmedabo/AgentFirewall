@@ -270,6 +270,7 @@ def cmd_rules(args: argparse.Namespace) -> int:
 
 def cmd_run(args: argparse.Namespace) -> int:
     from .runtime.egress import EgressPolicy
+    from .runtime.isolation import IsolationUnavailable, run_allowlisted, run_isolated
     from .runtime.sandbox import run_guarded
 
     command = _strip_dashes(args.command)
@@ -277,14 +278,22 @@ def cmd_run(args: argparse.Namespace) -> int:
         _stderr("run: no command given — use:  afw run --allow HOST -- <command>")
         return 1
 
-    # Bypass-proof isolation mode: no network at all, enforced by the kernel.
-    if args.isolate:
-        from .runtime.isolation import IsolationUnavailable, run_isolated
-        if args.allow:
-            _stderr("run: --isolate (bypass-proof, zero network) cannot be combined with "
-                    "--allow (proxy allowlist). Use --isolate for no network, or --allow "
-                    "for a filtered allowlist.")
+    # Mode 1: --isolate + --allow → bypass-proof allowlisting (kernel netns + broker).
+    if args.isolate and (args.allow or args.allow_loopback):
+        policy = EgressPolicy.from_spec(args.allow or [], args.allow_port or [],
+                                        args.allow_loopback)
+        try:
+            report = run_allowlisted(command, policy)
+        except IsolationUnavailable as exc:
+            _stderr(f"run --isolate --allow: {exc}")
             return 1
+        _print_egress_report(report, args, mode="bypass-proof allowlist (kernel netns)")
+        if args.fail_on_egress and report.blocked():
+            return 3
+        return report.exit_code
+
+    # Mode 2: --isolate alone → bypass-proof deny-all (no network).
+    if args.isolate:
         try:
             result = run_isolated(command, up_loopback=True)
         except IsolationUnavailable as exc:
@@ -299,25 +308,29 @@ def cmd_run(args: argparse.Namespace) -> int:
             print(f"  command exited {result.exit_code}")
         return result.exit_code
 
-    policy = EgressPolicy.from_spec(
-        hosts=args.allow or [], ports=args.allow_port or [],
-        allow_loopback=args.allow_loopback)
+    # Mode 3: --allow (or nothing) → proxy-based egress firewall (Phase 4).
+    policy = EgressPolicy.from_spec(args.allow or [], args.allow_port or [], args.allow_loopback)
     report = run_guarded(command, policy)
-
-    if args.format == "json":
-        print(_json.dumps(report.to_dict(), indent=2))
-    else:
-        allowed, blocked = report.allowed(), report.blocked()
-        print(f"\nAgentFirewall egress firewall — {' '.join(command)}")
-        print(f"  allowlist : {', '.join(args.allow or []) or '(none)'}"
-              f"{'  +loopback' if args.allow_loopback else ''}")
-        print(f"  outbound  : {len(allowed)} allowed, {len(blocked)} blocked")
-        for a in report.attempts:
-            print(f"    {a}")
-        print(f"  command exited {report.exit_code}")
+    _print_egress_report(report, args, mode="egress firewall (proxy)")
     if args.fail_on_egress and report.blocked():
         return 3
     return report.exit_code
+
+
+def _print_egress_report(report, args: argparse.Namespace, mode: str) -> None:
+    if args.format == "json":
+        data = report.to_dict()
+        data["mode"] = mode
+        print(_json.dumps(data, indent=2))
+        return
+    allowed, blocked = report.allowed(), report.blocked()
+    print(f"\nAgentFirewall {mode} — {' '.join(report.command)}")
+    print(f"  allowlist : {', '.join(args.allow or []) or '(none)'}"
+          f"{'  +loopback' if args.allow_loopback else ''}")
+    print(f"  outbound  : {len(allowed)} allowed, {len(blocked)} blocked")
+    for a in report.attempts:
+        print(f"    {a}")
+    print(f"  command exited {report.exit_code}")
 
 
 def cmd_mcp_proxy(args: argparse.Namespace) -> int:
@@ -468,7 +481,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_run.add_argument("--allow-loopback", action="store_true",
                        help="permit connections to localhost")
     p_run.add_argument("--isolate", action="store_true",
-                       help="bypass-proof: run with NO network (kernel netns), not a proxy")
+                       help="bypass-proof kernel netns: with --allow = hard allowlist, "
+                            "alone = zero network")
     p_run.add_argument("--fail-on-egress", action="store_true",
                        help="exit non-zero if any outbound connection was blocked")
     p_run.add_argument("-f", "--format", choices=["text", "json"], default="text")

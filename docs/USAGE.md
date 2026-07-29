@@ -169,10 +169,32 @@ afw run --isolate -- bash setup.sh
 
 The command runs in a fresh network namespace with no external interface, so it
 **physically cannot reach any host** — even via raw sockets, even as root inside.
-Loopback still works. `--isolate` can't be combined with `--allow` (one is
-zero-network, the other is a proxy allowlist); if the host can't create a
-namespace it refuses rather than running unprotected. Uses `unshare` or
-`bubblewrap`.
+Loopback still works; if the host can't create a namespace it refuses rather than
+running unprotected. Uses `unshare` or `bubblewrap`.
+
+### Bypass-proof *allowlisting* — `afw run --isolate --allow`
+
+The strongest mode: reach these hosts and nothing else, and the process can't
+escape it.
+
+```bash
+afw run --isolate --allow "*.github.com" -- npx some-agent
+#   ALLOW HTTP  api.github.com:443      ← brokered out
+#   (anything off the allowlist, or any raw socket, gets no network)
+```
+
+The command runs in a no-IP namespace; its egress is brokered through a
+Unix-domain-socket filtering proxy in the parent (a UDS crosses the namespace
+boundary, IP traffic can't). So the broker enforces the allowlist while a raw
+socket that ignores the proxy simply fails. `--fail-on-egress` still applies.
+
+Three strengths to choose from:
+
+| Command | Enforcement | Governs |
+|---|---|---|
+| `afw run --allow H -- cmd` | proxy allowlist | clients honouring `HTTP(S)_PROXY` |
+| `afw run --isolate -- cmd` | zero network | everything (bypass-proof) |
+| `afw run --isolate --allow H -- cmd` | allowlist | everything (bypass-proof) |
 
 ### Inspect an MCP server's tool calls — `afw mcp-proxy`
 

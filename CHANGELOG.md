@@ -6,8 +6,17 @@ All notable changes to AgentFirewall are documented here. This project follows
 
 ## [Unreleased]
 
-- Packaging: reusable GitHub Action (`action.yml`) and a tag-triggered release
-  workflow that publishes to PyPI via Trusted Publishing.
+## [0.7.0] — Bypass-proof allowlisting
+
+- **`afw run --isolate --allow <host>`**: reach these hosts and nothing else,
+  kernel-enforced. Runs in a no-IP network namespace whose egress is brokered
+  through a Unix-domain-socket filtering proxy (a UDS crosses the namespace
+  boundary; IP traffic can't), so a process that ignores the proxy and opens a raw
+  socket simply gets no network. Pure `unshare` + stdlib, no external deps.
+- `EgressProxy` can now listen on a Unix socket; `runtime/_jailrun.py` supervises
+  the in-namespace loopback + TCP→UDS forwarder.
+- Packaging (from 0.6.x): reusable GitHub Action (`action.yml`) and a tag-triggered
+  release workflow that publishes to PyPI via Trusted Publishing.
 
 ## [0.6.0] — Bypass-proof isolation
 
@@ -53,7 +62,8 @@ All notable changes to AgentFirewall are documented here. This project follows
 - `scan` / `verify` / `install` / `watch` / `rules`; ALLOW/WARN/BLOCK policy;
   text / JSON / SARIF output. MIT licensed, zero required dependencies.
 
-[Unreleased]: https://github.com/mmedabo/agentfirewall/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/mmedabo/agentfirewall/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.7.0
 [0.6.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.6.0
 [0.5.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.5.0
 [0.4.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.4.0

@@ -41,7 +41,8 @@ agentfirewall/
     egress.py      EgressPolicy + EgressProxy (default-deny filtering proxy)
     sandbox.py     run_guarded() — a command behind the egress firewall (afw run)
     mcp_proxy.py   McpInspector + stdio relay (afw mcp-proxy)
-    isolation.py   run_isolated() — kernel network-namespace jail (afw run --isolate)
+    isolation.py   run_isolated() / run_allowlisted() — kernel netns jail (afw run --isolate)
+    _jailrun.py    in-namespace supervisor: loopback + TCP→UDS forwarder for allowlisting
   web/
     server.py      stdlib HTTP server + token-guarded JSON API (afw serve)
     index.html     self-contained SPA
@@ -132,6 +133,11 @@ Independent of the scanning pipeline — it watches execution rather than files:
   no external interface (bypass-proof deny-all egress), via `unshare` or
   `bubblewrap`. `probe()` reports what the host supports; the runner refuses rather
   than silently running unprotected.
+- **`isolation.run_allowlisted()`** is bypass-proof *allowlisting*: it starts an
+  `EgressProxy` on a **Unix socket** in the parent, then launches the command in a
+  no-IP namespace running `_jailrun` (which brings up loopback, runs a TCP→UDS
+  forwarder, and points `HTTP(S)_PROXY` at it). The UDS reaches across the namespace
+  boundary — IP traffic can't — so the broker's allowlist is the only egress.
 
 ## Extension points
 

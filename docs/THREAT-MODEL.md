@@ -55,6 +55,7 @@ built to mirror that stack for AI artifacts:
 | Trust zones / segmentation | Different bar per zone | **Trust tiers** from provenance (`afw pin`, signatures, SBOM) tighten policy | ✅ shipped |
 | Egress filtering | Control outbound to stop exfiltration | **`afw run`** — default-deny filtering proxy on the agent's outbound traffic | ✅ shipped |
 | Network jail (bypass-proof) | Physically cut off the network | **`afw run --isolate`** — kernel network namespace, no external route | ✅ shipped |
+| Egress allowlist (bypass-proof) | Reach these hosts, nothing else, kernel-enforced | **`afw run --isolate --allow`** — netns + Unix-socket filtering broker | ✅ shipped |
 | WAF / reverse proxy (L7) | Inspect each app-layer request | **`afw mcp-proxy`** — inspect/redact/block each MCP tool call & result | ✅ shipped |
 | IDS vs IPS | Detect vs prevent | `scan` (detect) vs `verify`/`install` gate (prevent) | ✅ shipped |
 | Threat-intel feeds | Known-bad IoCs | Pluggable malicious name/domain/hash/signer feeds (`AFW-IOC-*`) | ✅ shipped |
@@ -188,14 +189,27 @@ create a namespace, `--isolate` refuses rather than running unprotected.
 afw run --isolate -- bash setup.sh    # zero network, kernel-enforced
 ```
 
-**Enforcement scope — stated honestly.** Two complementary tools:
-*`--allow` (proxy)* filters outbound to an allowlist but governs only clients that
-honour `HTTP(S)_PROXY`; *`--isolate` (namespace)* is bypass-proof but all-or-nothing
-(no network). Bypass-proof *allowlisting* — reach these hosts and nothing else,
-enforced by the kernel — needs a userspace network stack (`slirp4netns`) or
-root + `ip`/NAT and is tracked as Phase 5.x. Between them, default-deny egress
-closes the overwhelming majority of real-world exfiltration paths, and the MCP
-proxy fully mediates the stdio channel it sits on.
+**Bypass-proof allowlisting — `afw run --isolate --allow <host>`.** The strongest
+mode: reach these hosts and *nothing else*, and a process can't escape it. The
+command runs in a namespace with no IP connectivity; its egress is brokered
+through a **Unix-domain-socket filtering proxy** in the parent. A UDS crosses the
+namespace boundary because it's filesystem-based, not IP-based — so the broker (in
+the parent, with real network) enforces the allowlist, while a process that ignores
+the proxy and opens a raw socket simply gets no network. Pure `unshare` + stdlib,
+no external dependencies.
+
+```
+afw run --isolate --allow "*.github.com" -- npx some-agent   # only github.com, escape-proof
+```
+
+**Enforcement scope — stated honestly.** Three tools, increasing strength:
+*`--allow` (proxy)* filters to an allowlist but governs only clients that honour
+`HTTP(S)_PROXY`; *`--isolate` (namespace)* is bypass-proof but all-or-nothing;
+*`--isolate --allow` (namespace + broker)* is bypass-proof **and** allowlisted. The
+broker sees only connection destinations (for HTTPS it allowlists the CONNECT host
+but can't read the encrypted body — same as any egress firewall); the MCP proxy
+handles app-layer inspection. Deeper syscall/filesystem confinement (seccomp /
+Landlock beyond bubblewrap) remains Phase 5.x.
 
 ## 9. Known limitations
 

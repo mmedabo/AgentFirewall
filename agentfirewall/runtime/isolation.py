@@ -28,6 +28,8 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
+import time
 from dataclasses import dataclass
 from typing import Optional
 
@@ -151,3 +153,63 @@ def _build_argv(iso: Isolation, command: list[str], up_loopback: bool) -> list[s
 
 class IsolationUnavailable(RuntimeError):
     """Raised when bypass-proof isolation was requested but is not possible."""
+
+
+# --------------------------------------------------------------------------- #
+# Bypass-proof allowlisting (Phase 5.5)
+# --------------------------------------------------------------------------- #
+def unshare_net_prefix() -> Optional[list[str]]:
+    """Return an ``unshare`` prefix that creates a network namespace, or None.
+
+    Allowlisting needs the ``unshare`` backend specifically: the child shares the
+    parent's filesystem (so it can reach the broker's Unix socket) while getting
+    its own empty network namespace.
+    """
+    if not shutil.which("unshare"):
+        return None
+    if _can_unshare_net(["--net"]):
+        return ["unshare", "--net", "--fork"]
+    if _can_unshare_net(["--map-root-user", "--net"]):
+        return ["unshare", "--map-root-user", "--net", "--fork"]
+    return None
+
+
+def run_allowlisted(command: list[str], policy, env: Optional[dict] = None,
+                    cwd: Optional[str] = None, timeout: Optional[float] = None):
+    """Run ``command`` in a no-IP namespace whose only egress is an allowlisting
+    Unix-socket broker -- bypass-proof allowlisting.
+
+    ``policy`` is an :class:`agentfirewall.runtime.egress.EgressPolicy`. Returns a
+    :class:`agentfirewall.runtime.sandbox.SessionReport` of what the broker saw.
+    Raises :class:`IsolationUnavailable` if a network namespace can't be created.
+    """
+    from .egress import EgressProxy
+    from .sandbox import SessionReport
+
+    prefix = unshare_net_prefix()
+    if prefix is None:
+        raise IsolationUnavailable(
+            "bypass-proof allowlisting needs an unshare network namespace, which "
+            "is not available on this host")
+
+    tmpdir = tempfile.mkdtemp(prefix="afw-jail-")
+    sock = os.path.join(tmpdir, "broker.sock")
+    broker = EgressProxy(policy, unix_path=sock)
+    broker.start()
+
+    argv = [*prefix, sys.executable, "-m", "agentfirewall.runtime._jailrun",
+            "--sock", sock, "--", *command]
+    code = 0
+    try:
+        proc = subprocess.run(argv, env=env, cwd=cwd, timeout=timeout)
+        code = proc.returncode
+    except FileNotFoundError:
+        code = 127
+    except subprocess.TimeoutExpired:
+        code = 124
+    finally:
+        time.sleep(0.15)  # let final broker connections record
+        broker.stop()
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+    return SessionReport(command=command, exit_code=code, attempts=list(broker.log))
