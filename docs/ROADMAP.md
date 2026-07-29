@@ -112,6 +112,31 @@ allowlist is the only way out. No external dependencies — pure `unshare` + std
 - Deeper **seccomp / Landlock** filesystem + syscall confinement without
   bubblewrap (today, install `bwrap` to get it under `--isolate`).
 
+## ✅ Phase 6 — Deployed-agent guardrails (shipped: static)
+
+A new *direction*: protect an agent **you ship** from abuse by its own users, not
+just protect your host from an artifact you install. Static detections for the two
+classes seen in the wild:
+
+- **Excessive agency / no scoping** (`AFW-AGENCY-*`): user input driving code
+  execution, a code/shell tool exposed to end users, or a system prompt that grants
+  unrestricted scope (the "food bot runs Python" case). OWASP LLM06.
+- **Broken authorization** (`AFW-AUTHZ-*`): the agent invoked *before* the
+  quota/authz check (check-after-act TOCTOU — the Bolt.new refresh exploit), or a
+  limit enforced only client-side. CWE-367, OWASP API BFLA, LLM10.
+
+Run `afw scan ./my-agent-app`; see `examples/vulnerable-agent-app`.
+
+### 🔜 Phase 6.1 — Runtime guardrail library (planned)
+
+An embeddable guardrail developers wire into their agent to *enforce* the above at
+request time, not just detect it in code:
+
+- a **scope policy** (allowed intents/capabilities; deny code execution / off-topic
+  requests), reusing the rule engine on the user's input;
+- a **precondition gate** that authorizes and atomically reserves quota *before* the
+  agent runs, with idempotency-by-request-id so a refresh/replay can't slip through.
+
 ## How to help
 
 New detections are usually a one-line signature — see

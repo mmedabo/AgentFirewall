@@ -47,6 +47,12 @@ MCP_TOOL_POISONING = "MCP:Tool-Poisoning"
 MCP_RUG_PULL = "MCP:Rug-Pull"
 MCP_TOOL_SHADOWING = "MCP:Tool-Shadowing"
 
+# --- Deployed-agent application abuse (guardrails / business logic) ---------- #
+API_BROKEN_AUTHZ = "OWASP-API:Broken-Function-Level-Authorization"
+API_RESOURCE = "OWASP-API:Unrestricted-Resource-Consumption"
+CWE_TOCTOU = "CWE-367:TOCTOU-Race-Condition"
+CWE_CLIENT_ENFORCE = "CWE-602:Client-Side-Enforcement-of-Server-Side-Security"
+
 # --- Supply-chain integrity ------------------------------------------------- #
 SLSA_PROVENANCE = "SLSA:Provenance-and-Integrity"
 SLSA_UNSIGNED = "SLSA:Unsigned-Artifact"

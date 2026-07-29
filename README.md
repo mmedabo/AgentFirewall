@@ -43,6 +43,8 @@ too high — with a clear, auditable report of exactly why.
 | 🔁 **Rug pulls** *(stateful)* | a pinned artifact whose files, tools, permissions or tool descriptions **silently change** in a later update |
 | 📜 **Weak provenance** | unsigned / unattested artifacts get a lower **trust tier** that tightens the policy applied to them |
 | 🚫 **Known-bad IoCs** | artifact name, file hash, contacted domain or signer identity on a threat-intel feed |
+| 🎢 **Excessive agency** *(deployed agents)* | a chatbot that runs arbitrary code / has no topic scope (the "McDonald's bot writes Python" case) |
+| 🎟️ **Broken authorization** *(deployed agents)* | the expensive agent action runs *before* the quota/authz check (TOCTOU), or the limit is only enforced client-side (the Bolt.new refresh exploit) |
 
 Every detection is mapped to an industry framework — **OWASP Top 10 for LLM Apps**,
 **OWASP Top 10 for Agentic Apps**, **MITRE ATLAS**, **MCP threat research** and
@@ -344,6 +346,29 @@ it to the registry in `agentfirewall/rules/__init__.py`. See
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
+
+## Harden the agents you *deploy*, not just the ones you install
+
+Everything above protects your machine from a malicious artifact you install. The
+other direction matters too: an agent **you ship** can be abused by its own users.
+AgentFirewall scans your agent app for the two classes that keep showing up in the
+wild:
+
+- **Excessive agency / no scoping** — a food-ordering bot that will happily run
+  arbitrary Python, or a system prompt that says "you can do anything." Flagged as
+  `AFW-AGENCY-*` (OWASP LLM06 Excessive Agency).
+- **Broken authorization** — the expensive agent call runs *before* the quota/authz
+  check (a TOCTOU that a page refresh replays — the real Bolt.new free-token
+  exploit), or the limit is only enforced in the browser. Flagged as `AFW-AUTHZ-*`
+  (CWE-367 TOCTOU, OWASP API Broken Function-Level Authorization, LLM10).
+
+```bash
+afw scan ./my-agent-app        # ✗ BLOCK: AFW-AUTHZ-001 model invoked before the credit check
+```
+
+Try it on the bundled example: `afw scan examples/vulnerable-agent-app`. Runtime
+enforcement of these (an embeddable guardrail that checks-before-acts and confines
+scope at request time) is the next increment — see [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ## Use it in CI (GitHub Action)
 
