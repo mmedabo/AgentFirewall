@@ -148,6 +148,34 @@ Threat-intel feeds are **offline by default** (JSON or `names.txt`/`domains.txt`
 `hashes.txt`/`signers.txt`); drop your own into `~/.config/agentfirewall/intel/`.
 A hit on a known-malicious name, file hash, domain or revoked signer is `AFW-IOC-*`.
 
+**Runtime firewall — watch it *while it runs*, not just before:**
+
+Static scanning can't stop a payload it didn't recognise. The runtime layer does —
+by controlling what the agent can actually reach and say at run time.
+
+```bash
+# Egress firewall: default-deny outbound; only github.com gets through.
+afw run --allow "*.github.com" -- npx some-agent
+#   BLOCK HTTP    evil.example:80
+#   ALLOW HTTP    api.github.com:443
+
+# MCP tool-call proxy: inspect/redact/block an MCP server's traffic in real time.
+afw mcp-proxy -- npx some-mcp-server
+#   [afw mcp BLOCK  ] client→server  AFW-SEC-001  Reads SSH private keys
+#   [afw mcp REDACT ] server→client  AFW-TPZ-001  Tool description contains hidden directive
+```
+
+`afw run` routes the command's outbound HTTP(S) through a default-deny filtering
+proxy — anything off the allowlist gets a `403` and is logged (`--fail-on-egress`
+for CI). `afw mcp-proxy` mediates the JSON-RPC channel between an agent and an MCP
+server, catching **tool poisoning** in `tools/list`, **secret egress** in
+`tools/call` arguments, and **injected instructions** in tool results — forwarding,
+redacting, or blocking per `--action`.
+
+> Egress control is proxy-based: it governs clients that honour `HTTP(S)_PROXY`
+> (most HTTP libraries/CLIs). Raw-socket bypass needs OS network-namespace
+> isolation — tracked as Phase 5. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
 Try it right now against the bundled examples:
 
 ```bash
@@ -167,6 +195,8 @@ afw scan examples/poisoned-mcp      # ✗ BLOCK  (MCP tool poisoning + env secre
 | `afw verify <path>...` | CI gate. Exit `2` if any artifact is **BLOCK** (`--fail-on-warn` to also fail on warnings). |
 | `afw install <path> --to <dir>` | Pre-check, then copy into place **only if it passes** the firewall. |
 | `afw pin <path>` | Record a trusted baseline (`afw.lock`) for later rug-pull detection. |
+| `afw run --allow <host> -- <cmd>` | Run a command behind a **default-deny egress firewall** (block exfiltration). |
+| `afw mcp-proxy -- <server>` | Sit in front of an MCP server and **inspect/redact/block tool calls & results** live. |
 | `afw watch <dir>` | Poll a directory and scan new/modified artifacts as they appear. |
 | `afw rules` | List every detection with ID, severity, category, and framework coverage. |
 
@@ -252,14 +282,17 @@ Modelled on a real firewall's layered stack, AgentFirewall works in three tiers:
 ```
 PRE-INSTALL (static)     scan code, manifests and model-facing text   → afw scan
 INSTALL-TIME (stateful)  pin a baseline; re-verify every update        → afw pin / --baseline
-RUNTIME (dynamic)        egress firewall + tool-call proxy             → planned (see ROADMAP)
+TRUST ZONE (provenance)  signatures / SBOM / trust tiers / IoC feeds   → afw scan --intel
+RUNTIME (dynamic)        egress firewall + tool-call proxy             → afw run / afw mcp-proxy
 ```
 
-The first two tiers ship today. It's **static analysis + stateful diffing** — it
-reads artifacts, it never executes them, so it's safe to point at untrusted
-content. Like any scanner it's a strong first line of defence, not a guarantee:
-review `HIGH`/`CRITICAL` findings yourself. See
-[`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) for the firewall-mechanics mapping.
+All four tiers ship today. The first three are **static analysis + stateful
+diffing** — they read artifacts, never execute them, so they're safe to point at
+untrusted content. The runtime tier watches execution: it never needs to trust the
+code because it controls what the running process can reach and say. Like any
+firewall it's defence in depth, not a single guarantee — review `HIGH`/`CRITICAL`
+findings yourself. See [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) for the full
+firewall-mechanics mapping.
 
 ---
 

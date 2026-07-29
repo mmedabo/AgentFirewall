@@ -53,8 +53,8 @@ built to mirror that stack for AI artifacts:
 | Stateful inspection | Track connection state across time | **Baseline + diff** (`afw pin` / `--baseline`) — remember approved shape, flag drift | ✅ shipped |
 | Default-deny | Deny all, allow known-good | `--strict` policy + planned `--default-deny` capability allowlist | ⚠️ partial |
 | Trust zones / segmentation | Different bar per zone | **Trust tiers** from provenance (`afw pin`, signatures, SBOM) tighten policy | ✅ shipped |
-| Egress filtering | Control outbound to stop exfiltration | **Runtime network allowlist** (sandbox) | 🔜 planned |
-| WAF / reverse proxy (L7) | Inspect each app-layer request | **MCP/tool proxy** — inspect each tool call & result | 🔜 planned |
+| Egress filtering | Control outbound to stop exfiltration | **`afw run`** — default-deny filtering proxy on the agent's outbound traffic | ✅ shipped |
+| WAF / reverse proxy (L7) | Inspect each app-layer request | **`afw mcp-proxy`** — inspect/redact/block each MCP tool call & result | ✅ shipped |
 | IDS vs IPS | Detect vs prevent | `scan` (detect) vs `verify`/`install` gate (prevent) | ✅ shipped |
 | Threat-intel feeds | Known-bad IoCs | Pluggable malicious name/domain/hash/signer feeds (`AFW-IOC-*`) | ✅ shipped |
 | Policy/rulebase | Ordered ruleset | `Policy` (thresholds, ignore, categories, trust tightening) | ✅ shipped |
@@ -64,7 +64,7 @@ The three tiers, in defence-in-depth order:
 ```
 PRE-INSTALL (static)     scan the artifact's code, manifests and model-facing text
 INSTALL-TIME (stateful)  pin a baseline; re-verify every update  → rug-pull defense
-RUNTIME (dynamic)        egress firewall + tool-call proxy        → planned
+RUNTIME (dynamic)        egress firewall + tool-call proxy        → afw run / afw mcp-proxy
 ```
 
 ## 5. Detection catalogue → framework mapping
@@ -146,7 +146,44 @@ matching its name, file hashes, contacted domains, and signer identity against
 pluggable, offline-by-default IoC feeds (`AFW-IOC-*`). This is the firewall analog
 of an IP/domain blocklist.
 
-## 8. Known limitations
+## 8. Runtime firewall (dynamic layer)
+
+Static analysis inspects an artifact at rest; the runtime layer watches it *while
+it runs*, which is where exfiltration and injected-instruction attacks actually
+happen. It is the difference between reading a program and putting a firewall in
+front of it.
+
+**Egress firewall — `afw run`.** Runs a command with its outbound HTTP(S) routed
+through a **default-deny filtering proxy**. Only allowlisted destinations
+(`--allow *.github.com`) are forwarded; everything else gets a `403` and is logged.
+This blocks data exfiltration *even for a payload no static rule recognised* —
+the destination simply isn't reachable.
+
+```
+afw run --allow *.github.com -- npx some-agent    # blocks any egress off github.com
+```
+
+**MCP tool-call proxy — `afw mcp-proxy`.** Sits between the agent and an MCP server
+over stdio, like a WAF in front of a web app, and inspects every JSON-RPC message:
+
+| Direction | Message | What we look for |
+|---|---|---|
+| server → client | `tools/list` result | tool poisoning in descriptions |
+| client → server | `tools/call` params | secret egress, injected content in arguments |
+| server → client | tool result | injected instructions, secrets flowing into context (DLP) |
+
+On a severe finding it **forwards**, **redacts** the offending text, or **blocks**
+the message (answering a blocked call with a JSON-RPC error), per `--action`.
+
+**Enforcement scope — stated honestly.** Egress control is *proxy-based*: it
+governs any client that honours `HTTP(S)_PROXY`, which is most HTTP libraries and
+CLIs, but not a process that deliberately opens raw sockets and ignores the proxy
+environment. Bypass-proof containment needs OS-level network-namespace isolation,
+tracked as Phase 5 in [ROADMAP.md](ROADMAP.md). Even so, default-deny egress for
+proxy-respecting agents/tools closes the overwhelming majority of real-world
+exfiltration paths, and the MCP proxy fully mediates the stdio channel it sits on.
+
+## 9. Known limitations
 
 - Static rules can be evaded by novel obfuscation; entropy/unicode heuristics
   reduce but do not eliminate this.

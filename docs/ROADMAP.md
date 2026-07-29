@@ -63,18 +63,34 @@ The "threat-intel + segmentation" layer.
   seed ships as a starting point; add your own with `--intel <path>` or
   `~/.config/agentfirewall/intel/`.
 
-## 🔜 Phase 4 — Runtime firewall (planned)
+## ✅ Phase 4 — Runtime firewall (shipped)
 
-The "egress filter + WAF" layer — the biggest engineering lift and the piece that
-makes it a firewall in the fullest sense.
+The "egress filter + WAF" layer — watching an agent and its tools *while they run*.
 
-- **Egress firewall**: run install hooks / the agent inside a sandbox
-  (container / seccomp / Landlock) with a **default-deny outbound allowlist**, so
-  exfiltration is blocked even for payloads no static rule recognised.
-- **MCP / tool reverse proxy**: sit between the agent and its tools; inspect each
-  tool *call* (for injected args) and each tool *result* (DLP on secrets flowing
-  back into context; injected-instruction detection) in real time, with block /
-  redact actions.
+- **Egress firewall** (`afw run`): runs a command with its outbound HTTP(S) wired
+  through a **default-deny filtering proxy** (`EgressProxy`). Only allowlisted hosts
+  (`--allow *.github.com`) get through; everything else gets a `403`, and every
+  attempt is logged. `--fail-on-egress` turns a blocked connection into a non-zero
+  exit for CI.
+- **MCP tool-call proxy** (`afw mcp-proxy -- <server>`): sits between the agent and
+  an MCP server over stdio and inspects every JSON-RPC message — `tools/list`
+  descriptions (tool poisoning), `tools/call` arguments (secret egress / injected
+  content), and tool results (injected instructions / DLP) — then **forwards,
+  redacts, or blocks** in real time.
+
+**Enforcement scope (honest):** egress control is proxy-based — it governs any
+client that honours `HTTP(S)_PROXY` (most HTTP libraries and CLIs). A process that
+opens raw sockets and ignores the proxy env is not contained by this layer alone.
+
+## 🔜 Phase 5 — Bypass-proof isolation (planned)
+
+Harden the runtime layer against determined evasion:
+
+- OS-level **network-namespace isolation** (Linux userns/netns, or a container)
+  so a child physically cannot reach any destination except the filtering proxy —
+  closing the raw-socket bypass.
+- **seccomp / Landlock** syscall & filesystem confinement for install hooks.
+- Streaming HTTP body DLP (scan request bodies, not just destinations).
 
 ## How to help
 

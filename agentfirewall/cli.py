@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import argparse
+import json as _json
 import os
 import shutil
 import sys
@@ -256,9 +257,69 @@ def cmd_rules(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_run(args: argparse.Namespace) -> int:
+    from .runtime.egress import EgressPolicy
+    from .runtime.sandbox import run_guarded
+
+    command = _strip_dashes(args.command)
+    if not command:
+        _stderr("run: no command given — use:  afw run --allow HOST -- <command>")
+        return 1
+    policy = EgressPolicy.from_spec(
+        hosts=args.allow or [], ports=args.allow_port or [],
+        allow_loopback=args.allow_loopback)
+    report = run_guarded(command, policy)
+
+    if args.format == "json":
+        print(_json.dumps(report.to_dict(), indent=2))
+    else:
+        allowed, blocked = report.allowed(), report.blocked()
+        print(f"\nAgentFirewall egress firewall — {' '.join(command)}")
+        print(f"  allowlist : {', '.join(args.allow or []) or '(none)'}"
+              f"{'  +loopback' if args.allow_loopback else ''}")
+        print(f"  outbound  : {len(allowed)} allowed, {len(blocked)} blocked")
+        for a in report.attempts:
+            print(f"    {a}")
+        print(f"  command exited {report.exit_code}")
+    if args.fail_on_egress and report.blocked():
+        return 3
+    return report.exit_code
+
+
+def cmd_mcp_proxy(args: argparse.Namespace) -> int:
+    from .runtime.mcp_proxy import McpInspector, run_stdio_proxy
+
+    command = _strip_dashes(args.command)
+    if not command:
+        _stderr("mcp-proxy: no server command — use:  afw mcp-proxy -- <server cmd>")
+        return 1
+    inspector = McpInspector(action=args.action)
+
+    def on_event(is_c2s, decision) -> None:
+        if not decision.findings:
+            return
+        arrow = "client→server" if is_c2s else "server→client"
+        for f in decision.findings:
+            _stderr(f"[afw mcp {decision.action.upper():7}] {arrow}  "
+                    f"{f.rule_id}  {f.title}")
+
+    _stderr(f"[afw mcp] proxying {' '.join(command)} (action={args.action})")
+    rc = run_stdio_proxy(command, inspector, sys.stdin.buffer, sys.stdout.buffer,
+                         on_event=on_event)
+    _stderr(f"[afw mcp] server exited {rc}; {len(inspector.log)} finding(s) seen")
+    return rc
+
+
 # --------------------------------------------------------------------------- #
 # Helpers
 # --------------------------------------------------------------------------- #
+def _strip_dashes(command: list[str]) -> list[str]:
+    cmd = list(command or [])
+    if cmd and cmd[0] == "--":
+        cmd = cmd[1:]
+    return cmd
+
+
 def _install_copy(src: str, target: str) -> None:
     os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
     if os.path.isdir(src):
@@ -363,6 +424,29 @@ def build_parser() -> argparse.ArgumentParser:
                          help="scan the current contents once and exit")
     add_common(p_watch)
     p_watch.set_defaults(func=cmd_watch)
+
+    p_run = sub.add_parser(
+        "run", help="run a command behind the egress firewall (default-deny outbound)")
+    p_run.add_argument("--allow", action="append", metavar="HOST",
+                       help="host or *.domain the command may reach (repeatable)")
+    p_run.add_argument("--allow-port", action="append", type=int, metavar="PORT",
+                       help="restrict allowed traffic to these ports (repeatable)")
+    p_run.add_argument("--allow-loopback", action="store_true",
+                       help="permit connections to localhost")
+    p_run.add_argument("--fail-on-egress", action="store_true",
+                       help="exit non-zero if any outbound connection was blocked")
+    p_run.add_argument("-f", "--format", choices=["text", "json"], default="text")
+    p_run.add_argument("command", nargs=argparse.REMAINDER,
+                       help="-- followed by the command to run")
+    p_run.set_defaults(func=cmd_run)
+
+    p_mcp = sub.add_parser(
+        "mcp-proxy", help="inspect an MCP server's tool calls/results in real time")
+    p_mcp.add_argument("--action", choices=["warn", "redact", "block"], default="block",
+                       help="what to do with a severe finding (default: block)")
+    p_mcp.add_argument("command", nargs=argparse.REMAINDER,
+                       help="-- followed by the MCP server command to wrap")
+    p_mcp.set_defaults(func=cmd_mcp_proxy)
 
     p_rules = sub.add_parser("rules", help="list every detection")
     p_rules.add_argument("-f", "--format", choices=["text", "json"], default="text")

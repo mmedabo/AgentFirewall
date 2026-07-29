@@ -49,3 +49,15 @@ jobs:
           python -m agentfirewall scan examples/malicious-skill --format json \
             | python -c "import json,sys; d=json.load(sys.stdin); ids={f['rule_id'] for f in d['findings']}; assert 'AFW-IOC-003' in ids, ids"
           echo "trust tier and IoC feed working"
+      - name: Self-check (runtime egress firewall)
+        run: |
+          CHILD='import os,socket
+          h,p=os.environ["HTTP_PROXY"].split("//")[1].split(":")
+          s=socket.create_connection((h,int(p)),timeout=5)
+          s.sendall(b"GET http://evil.example/ HTTP/1.1\r\nHost: t\r\nConnection: close\r\n\r\n")
+          print(s.recv(20))'
+          if python -m agentfirewall run --fail-on-egress --allow "*.github.com" -- python -c "$CHILD"; then
+            echo "::error::egress firewall did not block evil.example"; exit 1
+          else
+            echo "egress firewall correctly blocked off-allowlist host"
+          fi
