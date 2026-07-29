@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentfirewall"
-version = "0.9.0"
+version = "1.0.0"
 description = "A security firewall for AI agents, skills and MCP servers — scan before you install."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -12,7 +12,7 @@ license = { text = "MIT" }
 authors = [{ name = "AgentFirewall contributors" }]
 keywords = ["security", "ai-agents", "llm", "mcp", "skills", "firewall", "supply-chain", "prompt-injection"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
