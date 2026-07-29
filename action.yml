@@ -1,0 +1,40 @@
+name: "AgentFirewall"
+description: "Scan AI agents, skills and MCP servers for security issues and gate your CI on the result."
+author: "AgentFirewall contributors"
+branding:
+  icon: "shield"
+  color: "red"
+
+inputs:
+  path:
+    description: "Path(s) to scan (space-separated). Defaults to the repo root."
+    required: false
+    default: "."
+  command:
+    description: "afw subcommand to run: verify (gate) or scan (report only)."
+    required: false
+    default: "verify"
+  args:
+    description: "Extra flags passed through, e.g. '--strict --fail-on-warn' or '--format sarif'."
+    required: false
+    default: ""
+  python-version:
+    description: "Python version to run on."
+    required: false
+    default: "3.x"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install AgentFirewall
+      shell: bash
+      run: pip install "${{ github.action_path }}"
+
+    - name: Run AgentFirewall
+      shell: bash
+      run: afw ${{ inputs.command }} ${{ inputs.path }} ${{ inputs.args }}

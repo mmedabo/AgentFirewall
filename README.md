@@ -336,6 +336,28 @@ it to the registry in `agentfirewall/rules/__init__.py`. See
 
 ---
 
+## Use it in CI (GitHub Action)
+
+Gate your own repo's skills/agents on every push with the reusable action:
+
+```yaml
+# .github/workflows/agentfirewall.yml
+name: AgentFirewall
+on: [push, pull_request]
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mmedabo/agentfirewall@v0.6.0
+        with:
+          path: ./skills
+          args: --strict          # optional: block on MEDIUM+ ; or --format sarif
+```
+
+The step fails the build if any artifact is **BLOCK** (`command: scan` reports
+without failing). See [`action.yml`](action.yml) for all inputs.
+
 ## Documentation
 
 | Doc | What's in it |
