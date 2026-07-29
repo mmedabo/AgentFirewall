@@ -9,7 +9,7 @@ description = "A security firewall for AI agents, skills and MCP servers — sca
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
-authors = [{ name = "AgentFirewall contributors" }]
+authors = [{ name = "Madhav Medaboina" }]
 keywords = ["security", "ai-agents", "llm", "mcp", "skills", "firewall", "supply-chain", "prompt-injection"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
