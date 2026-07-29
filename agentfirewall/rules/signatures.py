@@ -410,9 +410,52 @@ MEMORY_POISONING = PatternRule(
     ],
 )
 
+# --------------------------------------------------------------------------- #
+# 11. Excessive agency in a DEPLOYED agent (OWASP LLM06 / Agentic Tool-Misuse)
+#     Protects an agent *application* from giving its users more power or scope
+#     than its business purpose needs (e.g. a food-ordering bot that will run
+#     arbitrary Python for anyone who asks).
+# --------------------------------------------------------------------------- #
+AGENT_AGENCY = PatternRule(
+    id="agent-agency",
+    category="excessive-agency",
+    default_references=(F.LLM06_EXCESSIVE_AGENCY, F.AGENTIC_TOOL_MISUSE),
+    signatures=[
+        compile_sig(
+            "AFW-AGENCY-001", "User input drives code execution", S.CRITICAL,
+            r"\b(exec|eval)\s*\(\s*[^)]*\b(user_input|user_message|user_msg|message|"
+            r"prompt|query|chat|content|body|params|req\.\w+|request\.\w+|args\[)",
+            "Executes code built from user/request input — an end user can run arbitrary "
+            "code through the agent (excessive agency / RCE).",
+            "Never execute user-supplied code. Expose only specific, validated actions.",
+        ),
+        compile_sig(
+            "AFW-AGENCY-002", "Agent exposes a code-execution/shell tool", S.HIGH,
+            r"(?i)(\"name\"\s*:\s*\"|name\s*=\s*['\"]|def\s+|@tool\s*\(?\s*['\"]?)"
+            r"(run_python|execute_code|python_repl|code_interpreter|eval_code|run_code|"
+            r"exec_shell|shell_exec|run_shell|run_command|arbitrary_code)\b",
+            "Registers a tool that runs arbitrary code/shell for the agent. Rarely fits a "
+            "narrow business purpose and is a top target for abuse.",
+            "Remove code/shell tools from user-facing agents, or gate them behind strict authz.",
+        ),
+        compile_sig(
+            "AFW-AGENCY-003", "System prompt grants unrestricted scope", S.MEDIUM,
+            r"(?i)you\s+(can|may|are\s+able\s+to|are\s+allowed\s+to)\s+"
+            r"(do\s+anything|answer\s+any(thing|\s+question)|run\s+any\s+(code|command)|"
+            r"execute\s+any|access\s+anything|help\s+with\s+anything)|"
+            r"\bno\s+(restrictions|limits|limitations|guardrails|boundaries)\b|"
+            r"\bunrestricted\s+(access|assistant|agent)\b",
+            "The agent's instructions grant open-ended scope instead of confining it to its "
+            "business function — the root of off-mission abuse (e.g. code exec on a food bot).",
+            "Scope the agent explicitly: state what it may do and refuse everything else.",
+            flags=0,
+        ),
+    ],
+)
+
 # All PatternRules exported for the registry.
 PATTERN_RULES = [
     SECRETS, NETWORK, OBFUSCATION, DESTRUCTIVE, FILESYSTEM,
     EMBEDDED_SECRETS, DESERIALIZATION, OUTPUT_HANDLING, ANTI_FORENSICS,
-    MEMORY_POISONING,
+    MEMORY_POISONING, AGENT_AGENCY,
 ]

@@ -6,6 +6,19 @@ All notable changes to AgentFirewall are documented here. This project follows
 
 ## [Unreleased]
 
+## [0.8.0] — Deployed-agent guardrails
+
+- New protection *direction*: harden an agent **you deploy**, not just artifacts you
+  install. Static detections for two real-world abuse classes:
+  - **Excessive agency** (`AFW-AGENCY-*`): user input driving code execution, a
+    code/shell tool exposed to end users, or an unrestricted-scope system prompt
+    (the "food-ordering bot runs Python" case). OWASP LLM06.
+  - **Broken authorization** (`AFW-AUTHZ-*`): the agent invoked before the
+    quota/authz check (check-after-act TOCTOU — the Bolt.new refresh exploit), or a
+    limit enforced only client-side. CWE-367, OWASP API BFLA, LLM10.
+- New `examples/vulnerable-agent-app` fixture; framework refs for OWASP API Security
+  and CWE-367/602.
+
 ## [0.7.0] — Bypass-proof allowlisting
 
 - **`afw run --isolate --allow <host>`**: reach these hosts and nothing else,
@@ -62,7 +75,8 @@ All notable changes to AgentFirewall are documented here. This project follows
 - `scan` / `verify` / `install` / `watch` / `rules`; ALLOW/WARN/BLOCK policy;
   text / JSON / SARIF output. MIT licensed, zero required dependencies.
 
-[Unreleased]: https://github.com/mmedabo/agentfirewall/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/mmedabo/agentfirewall/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.8.0
 [0.7.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.7.0
 [0.6.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.6.0
 [0.5.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.5.0

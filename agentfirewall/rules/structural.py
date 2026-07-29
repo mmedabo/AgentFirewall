@@ -7,6 +7,7 @@ permissions declared in manifests, and install-time hooks.
 from __future__ import annotations
 
 import math
+import os
 import re
 import unicodedata
 from typing import Iterable, Iterator
@@ -451,6 +452,79 @@ def _clip(text: str, match: "re.Match[str]", width: int = 160) -> str:
     return text if len(text) <= width else text[:width] + "…"
 
 
+# --------------------------------------------------------------------------- #
+# Business-logic guardrails for a DEPLOYED agent app: is the expensive/mutating
+# agent action properly gated by authorization *before* it runs? (The Bolt.new
+# refresh exploit: the "out of credits" check fired after the agent had already
+# started, and a refresh replayed the queued prompt.)
+# --------------------------------------------------------------------------- #
+_ACT = re.compile(
+    r"(?i)\b(openai|anthropic)\b|\.chat\.completions\.create|\.messages\.create|"
+    r"\bllm\.\w+|model\.generate|\bgenerate(_?text)?\s*\(|streamText\s*\(|"
+    r"\bagent\.run\b|\brun_agent\b|\.invoke\s*\(|completions?\.create")
+_CHECK = re.compile(
+    r"(?i)\b(check_credits|has_credits|hascredits|deduct_credits|decrement_credits|"
+    r"spend_credits|use_credits|check_quota|checkquota|authorize|can_afford|"
+    r"require_credits|assert_credits|is_out_of_credits|isoutofcredits|rate_?limit|"
+    r"remaining_credits|credits_left|creditsleft)\b|\bcredits\s*[<>]=?|credits\s*-=")
+_CLIENT_EXT = (".js", ".ts", ".jsx", ".tsx", ".vue", ".svelte")
+_CLIENT_GATE = re.compile(
+    r"(?i)\b(credits|tokensleft|tokens_left|remainingcredits|isoutofcredits|"
+    r"hascredits|quota)\b[^\n]{0,20}([<>]=?|===?|!==?)")
+
+
+class BusinessLogicRule(Rule):
+    """Check-after-act / client-side-only enforcement in a deployed agent app."""
+
+    id = "AFW-AUTHZ"
+    category = "authorization"
+
+    def check(self, artifact: Artifact) -> Iterator[Finding]:
+        for sf in artifact.files:
+            if sf.is_binary:
+                continue
+
+            # 1. Model invoked before the quota/authorization check (TOCTOU).
+            if sf.role == "script":
+                act_line = check_line = None
+                for lineno, line in enumerate(sf.lines, start=1):
+                    if act_line is None and _ACT.search(line):
+                        act_line = lineno
+                    if check_line is None and _CHECK.search(line):
+                        check_line = lineno
+                if (act_line is not None and check_line is not None
+                        and act_line < check_line and (check_line - act_line) <= 100):
+                    yield Finding(
+                        "AFW-AUTHZ-001", "Authorization/quota checked after the agent ran",
+                        Severity.HIGH, self.category,
+                        f"The model/agent is invoked (line {act_line}) before the quota/"
+                        f"authorization check (line {check_line}). This check-after-act "
+                        "ordering lets a request slip through on retry/refresh before the "
+                        "check completes (TOCTOU) — the Bolt.new refresh-exploit pattern.",
+                        sf.path, act_line, evidence=sf.lines[act_line - 1].strip()[:160],
+                        remediation="Authorize and atomically reserve/deduct quota BEFORE "
+                        "invoking the agent; make the operation idempotent by request id.",
+                        references=(F.CWE_TOCTOU, F.API_BROKEN_AUTHZ, F.LLM10_UNBOUNDED),
+                    )
+
+            # 2. Quota/limit gating that lives in client-side code.
+            if os.path.splitext(sf.path)[1].lower() in _CLIENT_EXT:
+                for lineno, line in enumerate(sf.lines, start=1):
+                    if _CLIENT_GATE.search(line):
+                        yield Finding(
+                            "AFW-AUTHZ-002", "Quota/credit gate in client-side code",
+                            Severity.MEDIUM, self.category,
+                            "Credit/quota logic appears in client-side code. Client checks are "
+                            "trivially bypassed by replaying the request — enforce the limit "
+                            "server-side before the agent runs.",
+                            sf.path, lineno, evidence=line.strip()[:160],
+                            remediation="Enforce quota on the server before invoking the agent; "
+                            "treat any client-side check as UX only.",
+                            references=(F.CWE_CLIENT_ENFORCE, F.API_RESOURCE, F.LLM10_UNBOUNDED),
+                        )
+                        break  # one per file is enough
+
+
 STRUCTURAL_RULES: list[Rule] = [
     PromptInjectionRule(),
     HiddenUnicodeRule(),
@@ -459,4 +533,5 @@ STRUCTURAL_RULES: list[Rule] = [
     InstallHookRule(),
     ToolPoisoningRule(),
     TyposquatRule(),
+    BusinessLogicRule(),
 ]

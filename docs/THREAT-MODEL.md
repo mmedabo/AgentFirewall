@@ -7,12 +7,17 @@ security reviewers can reason about coverage instead of trusting a black box.
 
 ## 1. What we are protecting
 
-The asset is **the machine (and the agent) of a person who installs a third-party
-AI artifact** — a skill, an agent definition, an MCP server, or a plugin. These
-artifacts are distributed like npm packages or browser extensions: a bundle of
-markdown, manifests, and scripts authored by someone you do not know. Installing
-one grants it a foothold in a trusted context (your shell, your files, your
-agent's tool permissions, your model's context window).
+AgentFirewall protects in **two directions**:
+
+1. **Inbound (install-time):** the machine (and the agent) of a person who
+   **installs a third-party AI artifact** — a skill, agent definition, MCP server,
+   or plugin. These are distributed like npm packages: a bundle of markdown,
+   manifests and scripts authored by someone you do not know, and installing one
+   grants it a foothold in a trusted context (your shell, files, tool permissions,
+   model context). This is the focus of sections 1–9.
+2. **Outbound (deploy-time):** an agent **you ship**, abused by its own users — a
+   chatbot handed powers or scope beyond its purpose, or an expensive action that
+   isn't properly authorized before it runs. This is section 10.
 
 ## 2. Adversary & attack surface
 
@@ -104,6 +109,8 @@ Every detection cites the framework(s) it maps to (see `agentfirewall/frameworks
 | `AFW-DRIFT-010…013` | up to CRITICAL | rug-pull | MCP:Rug-Pull, OWASP-Agentic:Privilege-Compromise |
 | `AFW-PROV-001…002` | INFO | provenance | SLSA:Unsigned-Artifact, SLSA:Provenance |
 | `AFW-IOC-001…004` | up to CRITICAL | threat-intel | Threat-Intel:Known-Malicious-IoC, Revoked-Signer |
+| `AFW-AGENCY-001…003` | up to CRITICAL | excessive-agency | OWASP-LLM06, OWASP-Agentic:Tool-Misuse |
+| `AFW-AUTHZ-001…002` | up to HIGH | authorization | CWE-367 (TOCTOU), OWASP-API:BFLA, OWASP-LLM10 |
 
 ## 6. The rug-pull defense (stateful layer)
 
@@ -211,7 +218,36 @@ but can't read the encrypted body — same as any egress firewall); the MCP prox
 handles app-layer inspection. Deeper syscall/filesystem confinement (seccomp /
 Landlock beyond bubblewrap) remains Phase 5.x.
 
-## 9. Known limitations
+## 9. Deployed-agent guardrails (outbound direction)
+
+Sections 1–8 protect a host from an artifact it installs. This section is the
+mirror image: protecting an agent **you deploy** from abuse by its own users. Two
+patterns dominate real incidents.
+
+**Excessive agency / no scoping** (`AFW-AGENCY-*`). An agent is handed capabilities
+or latitude far beyond its business purpose — the archetype being a food-ordering
+chatbot that will run arbitrary Python for anyone who asks. We flag user input that
+drives code execution, a code/shell tool registered for a user-facing agent, and
+system prompts that grant open-ended scope ("you can do anything") instead of
+confining the agent and refusing everything else. *(OWASP LLM06 Excessive Agency,
+Agentic Tool-Misuse.)*
+
+**Broken authorization / check-after-act** (`AFW-AUTHZ-*`). The expensive or
+mutating agent action runs *before* the quota/authorization check completes, so a
+retry or page refresh replays the queued request and slips it through — exactly the
+Bolt.new refresh exploit that burned free tokens. A sibling pattern enforces the
+limit only in client-side code, which a replayed request bypasses. We detect
+model/agent invocation ordered before the credit/authz check within a handler, and
+quota gates living in browser code. *(CWE-367 TOCTOU, OWASP API Broken
+Function-Level Authorization, OWASP LLM10 Unbounded Consumption.)*
+
+These are **heuristic static** checks — they read your agent's source and flag the
+shape of the bug. *Enforcing* the fix at request time (a scope policy that refuses
+off-mission/code-exec requests, and a precondition gate that authorizes and
+reserves quota atomically before the agent runs, keyed by an idempotency id) is the
+planned runtime guardrail library (Phase 6.1 in [ROADMAP.md](ROADMAP.md)).
+
+## 10. Known limitations
 
 - Static rules can be evaded by novel obfuscation; entropy/unicode heuristics
   reduce but do not eliminate this.
