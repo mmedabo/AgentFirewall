@@ -8,7 +8,7 @@ name: Release
 #   owner=mmedabo, repo=agentfirewall, workflow=release.yml, environment=pypi.
 #
 # Cut a release by tagging main after a version bump:
-#   git tag v0.6.0 && git push origin v0.6.0
+#   git tag v1.0.0 && git push origin v1.0.0
 
 on:
   push:

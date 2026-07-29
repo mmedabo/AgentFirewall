@@ -5,6 +5,7 @@
 [![CI](https://github.com/mmedabo/agentfirewall/actions/workflows/ci.yml/badge.svg)](https://github.com/mmedabo/agentfirewall/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
+[![Version](https://img.shields.io/badge/version-1.0.0-brightgreen.svg)](CHANGELOG.md)
 
 The AI ecosystem is exploding with shareable **agents**, **skills**, **plugins**,
 and **MCP servers** — and, just like npm packages or browser extensions, most of
@@ -13,12 +14,19 @@ quietly read your `~/.ssh` keys, dump your environment variables to a webhook,
 pipe a remote script into your shell, or hide instructions that tell your agent
 to leak secrets *without telling you*.
 
-AgentFirewall inspects these artifacts **before** they ever touch your machine.
-It works like a real firewall: it **pre-checks** what you're about to install,
-**exposes** anything suspicious, and **blocks** the installation when the risk is
-too high — with a clear, auditable report of exactly why.
+AgentFirewall protects both directions of that trust:
 
-> No cloud. No API keys. No telemetry. It runs 100% locally with **zero
+- **Inbound** — it inspects an artifact **before** it touches your machine,
+  **exposes** anything suspicious, and **blocks** installation when the risk is too
+  high (and it can contain what does run, at the kernel level).
+- **Outbound** — it hardens the agents **you deploy** against abuse by their own
+  users (excessive agency, broken authorization), both by scanning your code and by
+  an embeddable runtime guardrail.
+
+It works like a real firewall: layered defenses, default-deny where it counts, and
+a clear, auditable report of exactly why.
+
+> No cloud. No API keys. No telemetry. It runs 100% locally with **zero required
 > dependencies**, so you can trust the thing that checks your trust.
 
 ---
@@ -401,7 +409,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: mmedabo/agentfirewall@v0.6.0
+      - uses: mmedabo/agentfirewall@v1.0.0
         with:
           path: ./skills
           args: --strict          # optional: block on MEDIUM+ ; or --format sarif

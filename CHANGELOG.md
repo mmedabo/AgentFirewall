@@ -6,6 +6,33 @@ All notable changes to AgentFirewall are documented here. This project follows
 
 ## [Unreleased]
 
+## [1.0.0] — First stable release
+
+First stable, feature-complete release. AgentFirewall now spans the full agent
+security lifecycle, in two directions:
+
+**Inbound — trust an artifact before you install it**
+- Static scanner (skills, agents, MCP servers, plugins; dir/file/zip) with 50+
+  detections across secrets, exfiltration, obfuscation, destructive actions,
+  prompt injection, tool poisoning, memory poisoning, typosquatting and more —
+  every finding mapped to OWASP LLM / OWASP Agentic / MITRE ATLAS / MCP / SLSA.
+- Stateful rug-pull defense (`afw pin` / `--baseline`), trust tiers from provenance,
+  and offline threat-intel feeds.
+- `scan` / `verify` / `install` gates; text / JSON / SARIF; a local web UI
+  (`afw serve`); a reusable GitHub Action.
+
+**Runtime — contain what runs**
+- Egress firewall (`afw run --allow`), MCP tool-call proxy (`afw mcp-proxy`),
+  kernel network-jail (`afw run --isolate`), and bypass-proof allowlisting
+  (`afw run --isolate --allow`).
+
+**Outbound — harden the agents you deploy**
+- Static guardrail detections (`AFW-AGENCY-*`, `AFW-AUTHZ-*`) and the embeddable
+  `agentfirewall.guardrails` library (`PreconditionGate`, `InputGuard`).
+
+No changes to the public API since 0.9.0; this release marks stability, bumps the
+package to Production/Stable, and is the first tagged/published version.
+
 ## [0.9.0] — Runtime guardrail library
 
 - `agentfirewall.guardrails`: embeddable enforcement for deployed agents.
@@ -87,7 +114,8 @@ All notable changes to AgentFirewall are documented here. This project follows
 - `scan` / `verify` / `install` / `watch` / `rules`; ALLOW/WARN/BLOCK policy;
   text / JSON / SARIF output. MIT licensed, zero required dependencies.
 
-[Unreleased]: https://github.com/mmedabo/agentfirewall/compare/v0.9.0...HEAD
+[Unreleased]: https://github.com/mmedabo/agentfirewall/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v1.0.0
 [0.9.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.9.0
 [0.8.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.8.0
 [0.7.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.7.0
