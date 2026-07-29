@@ -181,12 +181,21 @@ afw run --isolate -- bash setup.sh
 ```
 
 `--isolate` runs the command in a **kernel network namespace** with no external
-interface, so it physically cannot reach anything — even via raw sockets. This is
-the bypass-proof complement to the proxy: use `--allow` for a filtered allowlist
-(governs proxy-respecting clients), or `--isolate` for hard zero-network
-containment (kernel-enforced, refuses if the host can't isolate). Uses `unshare`
-or `bubblewrap` when available. See [`docs/ROADMAP.md`](docs/ROADMAP.md) for what's
-still open (bypass-proof *allowlisting*).
+interface, so it physically cannot reach anything — even via raw sockets. Add
+`--allow` for a **bypass-proof allowlist** — reach these hosts and nothing else,
+kernel-enforced:
+
+```bash
+afw run --isolate --allow "*.github.com" -- npx some-agent
+#   ALLOW HTTP    api.github.com:443     ← brokered out
+#   (a raw socket to anywhere else simply gets no network)
+```
+
+Three strengths, your pick: `--allow` (proxy allowlist, governs proxy-respecting
+clients) · `--isolate` (hard zero-network) · `--isolate --allow` (bypass-proof
+allowlist — a namespace with no route, egress brokered through a Unix-socket
+filtering proxy). All pure `unshare` + stdlib, no external dependencies; uses
+`bubblewrap` for extra fs/seccomp confinement when installed.
 
 **Prefer a browser?** `afw serve` opens a local web UI — drag-drop a skill folder
 or `.zip` and read the verdict, trust tier and findings, no terminal required.

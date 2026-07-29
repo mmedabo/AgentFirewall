@@ -18,6 +18,7 @@ layer alone; combine it with OS network-namespace isolation (see sandbox.py's
 """
 from __future__ import annotations
 
+import os
 import select
 import socket
 import threading
@@ -77,10 +78,17 @@ class ConnectionAttempt:
 
 
 class EgressProxy:
-    """A threaded, filtering forward proxy bound to loopback."""
+    """A threaded, filtering forward proxy.
 
-    def __init__(self, policy: EgressPolicy):
+    Binds to loopback TCP by default. Pass ``unix_path`` to instead listen on a
+    Unix domain socket -- which, unlike TCP, is reachable across a network
+    namespace boundary, making it the bridge for bypass-proof allowlisting
+    (see :func:`agentfirewall.runtime.isolation.run_allowlisted`).
+    """
+
+    def __init__(self, policy: EgressPolicy, unix_path: Optional[str] = None):
         self.policy = policy
+        self.unix_path = unix_path
         self.log: list[ConnectionAttempt] = []
         self._server: Optional[socket.socket] = None
         self._thread: Optional[threading.Thread] = None
@@ -90,13 +98,20 @@ class EgressProxy:
 
     # ---- lifecycle ------------------------------------------------------- #
     def start(self) -> tuple[str, int]:
-        srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        srv.bind(("127.0.0.1", 0))
+        if self.unix_path:
+            srv = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            if os.path.exists(self.unix_path):
+                os.unlink(self.unix_path)
+            srv.bind(self.unix_path)
+        else:
+            srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            srv.bind(("127.0.0.1", 0))
         srv.listen(64)
         srv.settimeout(0.5)
         self._server = srv
-        self.address = srv.getsockname()
+        if not self.unix_path:
+            self.address = srv.getsockname()
         self._thread = threading.Thread(target=self._serve, daemon=True)
         self._thread.start()
         return self.address
@@ -108,6 +123,11 @@ class EgressProxy:
         if self._server:
             try:
                 self._server.close()
+            except OSError:
+                pass
+        if self.unix_path and os.path.exists(self.unix_path):
+            try:
+                os.unlink(self.unix_path)
             except OSError:
                 pass
 

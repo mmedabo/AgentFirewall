@@ -86,8 +86,11 @@ def test_isolated_loopback_works():
 
 
 # ------------------------------- CLI --------------------------------------- #
-def test_cli_isolate_allow_conflict():
-    assert main(["run", "--isolate", "--allow", "x.example", "--", "true"]) == 1
+@_needs_ns
+def test_cli_isolate_allow_is_allowlist_mode():
+    # --isolate + --allow is now bypass-proof allowlisting (Phase 5.5), not an error.
+    # Running `true` needs no network, so it succeeds inside the jail.
+    assert main(["run", "--isolate", "--allow", "x.example", "--", "true"]) == 0
 
 
 def test_cli_run_no_command_errors():

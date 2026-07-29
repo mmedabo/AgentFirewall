@@ -97,13 +97,20 @@ Harden the runtime layer against determined evasion.
 - Loopback is brought up inside the jail, so isolated processes can still use
   `localhost` if they need it.
 
+### ✅ Phase 5.5 — Bypass-proof allowlisting (shipped)
+
+`afw run --isolate --allow <host>` now enforces an allowlist that a process
+**cannot escape** — reach these hosts, nothing else, kernel-enforced. It runs the
+command in a network namespace with no IP connectivity and brokers its egress
+through a **Unix-domain-socket filtering proxy** in the parent (a UDS crosses the
+namespace boundary because it's filesystem-based, not IP-based). A process that
+ignores the proxy and opens a raw socket simply gets no network, so the broker's
+allowlist is the only way out. No external dependencies — pure `unshare` + stdlib.
+
 ### Still open (Phase 5.x)
 
-- **Bypass-proof *allowlisting*** (reach these hosts, nothing else — enforced by
-  the kernel, not a proxy) needs a userspace network stack (`slirp4netns`) or
-  root + `ip`/NAT to route the namespace through the filtering proxy. Until then,
-  use `--isolate` for zero-network or `--allow` (Phase 4 proxy) for allowlisting.
-- Deeper **seccomp / Landlock** filesystem confinement without bubblewrap.
+- Deeper **seccomp / Landlock** filesystem + syscall confinement without
+  bubblewrap (today, install `bwrap` to get it under `--isolate`).
 
 ## How to help
 
