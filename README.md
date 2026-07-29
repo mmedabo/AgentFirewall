@@ -176,6 +176,13 @@ redacting, or blocking per `--action`.
 > (most HTTP libraries/CLIs). Raw-socket bypass needs OS network-namespace
 > isolation — tracked as Phase 5. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
+**Prefer a browser?** `afw serve` opens a local web UI — drag-drop a skill folder
+or `.zip` and read the verdict, trust tier and findings, no terminal required.
+
+```bash
+afw serve --open        # http://127.0.0.1:8000 (runs locally, nothing is uploaded)
+```
+
 Try it right now against the bundled examples:
 
 ```bash
@@ -197,6 +204,7 @@ afw scan examples/poisoned-mcp      # ✗ BLOCK  (MCP tool poisoning + env secre
 | `afw pin <path>` | Record a trusted baseline (`afw.lock`) for later rug-pull detection. |
 | `afw run --allow <host> -- <cmd>` | Run a command behind a **default-deny egress firewall** (block exfiltration). |
 | `afw mcp-proxy -- <server>` | Sit in front of an MCP server and **inspect/redact/block tool calls & results** live. |
+| `afw serve` | Launch the **local web UI** — drag-drop a folder/zip and read the report in a browser. |
 | `afw watch <dir>` | Poll a directory and scan new/modified artifacts as they appear. |
 | `afw rules` | List every detection with ID, severity, category, and framework coverage. |
 
@@ -315,6 +323,16 @@ it to the registry in `agentfirewall/rules/__init__.py`. See
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
+
+## Documentation
+
+| Doc | What's in it |
+|---|---|
+| [`docs/USAGE.md`](docs/USAGE.md) | Task-oriented cookbook for every command, incl. the web UI |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Module map, data flow, and how to extend each layer |
+| [`docs/THREAT-MODEL.md`](docs/THREAT-MODEL.md) | Threat model, firewall-mechanics mapping, rule→framework table |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | Phases 0–5: what's shipped and what's planned |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) · [`SECURITY.md`](SECURITY.md) | Adding detections; reporting bypasses |
 
 ## Development
 

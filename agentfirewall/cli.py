@@ -202,6 +202,17 @@ def cmd_watch(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_serve(args: argparse.Namespace) -> int:
+    from .web.server import serve
+
+    try:
+        serve(host=args.host, port=args.port, open_browser=args.open)
+    except OSError as exc:
+        _stderr(f"serve: could not bind {args.host}:{args.port} — {exc}")
+        return 1
+    return 0
+
+
 def cmd_rules(args: argparse.Namespace) -> int:
     from .rules.base import PatternRule
 
@@ -447,6 +458,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_mcp.add_argument("command", nargs=argparse.REMAINDER,
                        help="-- followed by the MCP server command to wrap")
     p_mcp.set_defaults(func=cmd_mcp_proxy)
+
+    p_serve = sub.add_parser("serve", help="launch the local web UI in a browser")
+    p_serve.add_argument("--host", default="127.0.0.1",
+                         help="address to bind (default: 127.0.0.1)")
+    p_serve.add_argument("--port", type=int, default=8000, help="port (default: 8000)")
+    p_serve.add_argument("--open", action="store_true", help="open a browser window")
+    p_serve.set_defaults(func=cmd_serve)
 
     p_rules = sub.add_parser("rules", help="list every detection")
     p_rules.add_argument("-f", "--format", choices=["text", "json"], default="text")
