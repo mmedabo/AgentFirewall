@@ -82,15 +82,28 @@ The "egress filter + WAF" layer — watching an agent and its tools *while they 
 client that honours `HTTP(S)_PROXY` (most HTTP libraries and CLIs). A process that
 opens raw sockets and ignores the proxy env is not contained by this layer alone.
 
-## 🔜 Phase 5 — Bypass-proof isolation (planned)
+## ✅ Phase 5 — Bypass-proof isolation (shipped)
 
-Harden the runtime layer against determined evasion:
+Harden the runtime layer against determined evasion.
 
-- OS-level **network-namespace isolation** (Linux userns/netns, or a container)
-  so a child physically cannot reach any destination except the filtering proxy —
-  closing the raw-socket bypass.
-- **seccomp / Landlock** syscall & filesystem confinement for install hooks.
-- Streaming HTTP body DLP (scan request bodies, not just destinations).
+- **Kernel-enforced network isolation** (`afw run --isolate`): runs a command in a
+  fresh **network namespace** with no external interface, so it physically cannot
+  reach any host — even via raw sockets, even as root inside the namespace. This
+  closes the raw-socket bypass for the most important case: running untrusted
+  install hooks / setup scripts with **zero network**. Backends: `unshare`
+  (root or rootless user namespace), or **bubblewrap** when installed (which adds
+  filesystem + seccomp confinement). If the host can't isolate, `--isolate`
+  **refuses** rather than silently running with full network.
+- Loopback is brought up inside the jail, so isolated processes can still use
+  `localhost` if they need it.
+
+### Still open (Phase 5.x)
+
+- **Bypass-proof *allowlisting*** (reach these hosts, nothing else — enforced by
+  the kernel, not a proxy) needs a userspace network stack (`slirp4netns`) or
+  root + `ip`/NAT to route the namespace through the filtering proxy. Until then,
+  use `--isolate` for zero-network or `--allow` (Phase 4 proxy) for allowlisting.
+- Deeper **seccomp / Landlock** filesystem confinement without bubblewrap.
 
 ## How to help
 

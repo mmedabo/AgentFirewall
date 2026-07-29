@@ -61,3 +61,18 @@ jobs:
           else
             echo "egress firewall correctly blocked off-allowlist host"
           fi
+      - name: Self-check (bypass-proof isolation, if the runner supports netns)
+        run: |
+          if unshare --net true 2>/dev/null; then
+            NET='import socket,sys
+          try:
+            socket.create_connection(("1.1.1.1",53),timeout=3); sys.exit(9)
+          except OSError: sys.exit(0)'
+            if python -m agentfirewall run --isolate -- python -c "$NET"; then
+              echo "isolation correctly denied all network"
+            else
+              echo "::error::isolated child reached the network"; exit 1
+            fi
+          else
+            echo "runner cannot create a network namespace; skipping isolation self-check"
+          fi

@@ -276,6 +276,29 @@ def cmd_run(args: argparse.Namespace) -> int:
     if not command:
         _stderr("run: no command given — use:  afw run --allow HOST -- <command>")
         return 1
+
+    # Bypass-proof isolation mode: no network at all, enforced by the kernel.
+    if args.isolate:
+        from .runtime.isolation import IsolationUnavailable, run_isolated
+        if args.allow:
+            _stderr("run: --isolate (bypass-proof, zero network) cannot be combined with "
+                    "--allow (proxy allowlist). Use --isolate for no network, or --allow "
+                    "for a filtered allowlist.")
+            return 1
+        try:
+            result = run_isolated(command, up_loopback=True)
+        except IsolationUnavailable as exc:
+            _stderr(f"run --isolate: {exc}")
+            return 1
+        if args.format == "json":
+            print(_json.dumps(result.to_dict(), indent=2))
+        else:
+            print(f"\nAgentFirewall isolation — {' '.join(command)}")
+            print(f"  method   : {result.method}")
+            print("  network  : DENIED (kernel-enforced; no external connectivity)")
+            print(f"  command exited {result.exit_code}")
+        return result.exit_code
+
     policy = EgressPolicy.from_spec(
         hosts=args.allow or [], ports=args.allow_port or [],
         allow_loopback=args.allow_loopback)
@@ -444,6 +467,8 @@ def build_parser() -> argparse.ArgumentParser:
                        help="restrict allowed traffic to these ports (repeatable)")
     p_run.add_argument("--allow-loopback", action="store_true",
                        help="permit connections to localhost")
+    p_run.add_argument("--isolate", action="store_true",
+                       help="bypass-proof: run with NO network (kernel netns), not a proxy")
     p_run.add_argument("--fail-on-egress", action="store_true",
                        help="exit non-zero if any outbound connection was blocked")
     p_run.add_argument("-f", "--format", choices=["text", "json"], default="text")

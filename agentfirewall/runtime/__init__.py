@@ -6,5 +6,7 @@ default-deny egress proxy and :mod:`agentfirewall.runtime.mcp_proxy` for the
 tool-call inspection proxy.
 """
 from .egress import ConnectionAttempt, EgressPolicy, EgressProxy
+from .isolation import Isolation, IsolationUnavailable, probe, run_isolated
 
-__all__ = ["EgressPolicy", "EgressProxy", "ConnectionAttempt"]
+__all__ = ["EgressPolicy", "EgressProxy", "ConnectionAttempt",
+           "Isolation", "IsolationUnavailable", "probe", "run_isolated"]

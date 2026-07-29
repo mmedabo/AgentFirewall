@@ -154,7 +154,25 @@ Only allowlisted hosts get through; everything else gets a `403` and is logged.
 `--allow-loopback` permits localhost.
 
 > Enforcement is proxy-based: it governs clients honouring `HTTP(S)_PROXY` (most
-> HTTP libraries and CLIs). Raw-socket bypass resistance is Phase 5.
+> HTTP libraries and CLIs). For bypass-proof containment, use `--isolate` below.
+
+### Run something with *zero* network — `afw run --isolate`
+
+For untrusted install hooks / setup scripts, cut off the network entirely at the
+kernel level:
+
+```bash
+afw run --isolate -- bash setup.sh
+#   method  : unshare (root netns)
+#   network : DENIED (kernel-enforced; no external connectivity)
+```
+
+The command runs in a fresh network namespace with no external interface, so it
+**physically cannot reach any host** — even via raw sockets, even as root inside.
+Loopback still works. `--isolate` can't be combined with `--allow` (one is
+zero-network, the other is a proxy allowlist); if the host can't create a
+namespace it refuses rather than running unprotected. Uses `unshare` or
+`bubblewrap`.
 
 ### Inspect an MCP server's tool calls — `afw mcp-proxy`
 

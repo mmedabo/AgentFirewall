@@ -41,6 +41,7 @@ agentfirewall/
     egress.py      EgressPolicy + EgressProxy (default-deny filtering proxy)
     sandbox.py     run_guarded() — a command behind the egress firewall (afw run)
     mcp_proxy.py   McpInspector + stdio relay (afw mcp-proxy)
+    isolation.py   run_isolated() — kernel network-namespace jail (afw run --isolate)
   web/
     server.py      stdlib HTTP server + token-guarded JSON API (afw serve)
     index.html     self-contained SPA
@@ -127,6 +128,10 @@ Independent of the scanning pipeline — it watches execution rather than files:
   returns a `Decision` (`forward` / `redact` / `block`). `run_stdio_proxy()` relays
   newline-delimited JSON-RPC between an agent and a spawned MCP server, enforcing
   those decisions.
+- **`isolation.run_isolated()`** runs a command in a kernel network namespace with
+  no external interface (bypass-proof deny-all egress), via `unshare` or
+  `bubblewrap`. `probe()` reports what the host supports; the runner refuses rather
+  than silently running unprotected.
 
 ## Extension points
 

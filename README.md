@@ -172,9 +172,21 @@ server, catching **tool poisoning** in `tools/list`, **secret egress** in
 `tools/call` arguments, and **injected instructions** in tool results — forwarding,
 redacting, or blocking per `--action`.
 
-> Egress control is proxy-based: it governs clients that honour `HTTP(S)_PROXY`
-> (most HTTP libraries/CLIs). Raw-socket bypass needs OS network-namespace
-> isolation — tracked as Phase 5. See [`docs/ROADMAP.md`](docs/ROADMAP.md).
+**Bypass-proof isolation — run untrusted install hooks with *zero* network:**
+
+```bash
+afw run --isolate -- bash setup.sh
+#   method  : unshare (root netns)
+#   network : DENIED (kernel-enforced; no external connectivity)
+```
+
+`--isolate` runs the command in a **kernel network namespace** with no external
+interface, so it physically cannot reach anything — even via raw sockets. This is
+the bypass-proof complement to the proxy: use `--allow` for a filtered allowlist
+(governs proxy-respecting clients), or `--isolate` for hard zero-network
+containment (kernel-enforced, refuses if the host can't isolate). Uses `unshare`
+or `bubblewrap` when available. See [`docs/ROADMAP.md`](docs/ROADMAP.md) for what's
+still open (bypass-proof *allowlisting*).
 
 **Prefer a browser?** `afw serve` opens a local web UI — drag-drop a skill folder
 or `.zip` and read the verdict, trust tier and findings, no terminal required.

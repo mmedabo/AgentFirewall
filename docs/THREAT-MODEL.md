@@ -54,6 +54,7 @@ built to mirror that stack for AI artifacts:
 | Default-deny | Deny all, allow known-good | `--strict` policy + planned `--default-deny` capability allowlist | ⚠️ partial |
 | Trust zones / segmentation | Different bar per zone | **Trust tiers** from provenance (`afw pin`, signatures, SBOM) tighten policy | ✅ shipped |
 | Egress filtering | Control outbound to stop exfiltration | **`afw run`** — default-deny filtering proxy on the agent's outbound traffic | ✅ shipped |
+| Network jail (bypass-proof) | Physically cut off the network | **`afw run --isolate`** — kernel network namespace, no external route | ✅ shipped |
 | WAF / reverse proxy (L7) | Inspect each app-layer request | **`afw mcp-proxy`** — inspect/redact/block each MCP tool call & result | ✅ shipped |
 | IDS vs IPS | Detect vs prevent | `scan` (detect) vs `verify`/`install` gate (prevent) | ✅ shipped |
 | Threat-intel feeds | Known-bad IoCs | Pluggable malicious name/domain/hash/signer feeds (`AFW-IOC-*`) | ✅ shipped |
@@ -175,13 +176,26 @@ over stdio, like a WAF in front of a web app, and inspects every JSON-RPC messag
 On a severe finding it **forwards**, **redacts** the offending text, or **blocks**
 the message (answering a blocked call with a JSON-RPC error), per `--action`.
 
-**Enforcement scope — stated honestly.** Egress control is *proxy-based*: it
-governs any client that honours `HTTP(S)_PROXY`, which is most HTTP libraries and
-CLIs, but not a process that deliberately opens raw sockets and ignores the proxy
-environment. Bypass-proof containment needs OS-level network-namespace isolation,
-tracked as Phase 5 in [ROADMAP.md](ROADMAP.md). Even so, default-deny egress for
-proxy-respecting agents/tools closes the overwhelming majority of real-world
-exfiltration paths, and the MCP proxy fully mediates the stdio channel it sits on.
+**Bypass-proof isolation — `afw run --isolate`.** For the case where proxy-level
+egress isn't enough — running an untrusted install hook or setup script — this
+runs the command in a **kernel network namespace with no external interface**. The
+process physically cannot reach any host, even with raw sockets, even as root
+inside the namespace. It's default-deny egress enforced by the kernel, not by the
+client's cooperation. Loopback is available inside the jail; if the host can't
+create a namespace, `--isolate` refuses rather than running unprotected.
+
+```
+afw run --isolate -- bash setup.sh    # zero network, kernel-enforced
+```
+
+**Enforcement scope — stated honestly.** Two complementary tools:
+*`--allow` (proxy)* filters outbound to an allowlist but governs only clients that
+honour `HTTP(S)_PROXY`; *`--isolate` (namespace)* is bypass-proof but all-or-nothing
+(no network). Bypass-proof *allowlisting* — reach these hosts and nothing else,
+enforced by the kernel — needs a userspace network stack (`slirp4netns`) or
+root + `ip`/NAT and is tracked as Phase 5.x. Between them, default-deny egress
+closes the overwhelming majority of real-world exfiltration paths, and the MCP
+proxy fully mediates the stdio channel it sits on.
 
 ## 9. Known limitations
 
