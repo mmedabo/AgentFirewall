@@ -127,15 +127,22 @@ classes seen in the wild:
 
 Run `afw scan ./my-agent-app`; see `examples/vulnerable-agent-app`.
 
-### 🔜 Phase 6.1 — Runtime guardrail library (planned)
+### ✅ Phase 6.1 — Runtime guardrail library (shipped)
 
-An embeddable guardrail developers wire into their agent to *enforce* the above at
-request time, not just detect it in code:
+`agentfirewall.guardrails` — embeddable enforcement that *stops* the two patterns
+at request time, not just detects them:
 
-- a **scope policy** (allowed intents/capabilities; deny code execution / off-topic
-  requests), reusing the rule engine on the user's input;
-- a **precondition gate** that authorizes and atomically reserves quota *before* the
-  agent runs, with idempotency-by-request-id so a refresh/replay can't slip through.
+- **`InputGuard` / `ScopePolicy`**: confine an agent to its purpose — reject
+  prompt-injection in user input and deny tool calls outside an allowlist or that
+  run code/shell (reusing the rule engine, so runtime and static agree). Stops the
+  "food bot runs Python" case even if the model tries.
+- **`PreconditionGate`**: authorize and **atomically reserve quota before** the
+  agent runs, **idempotent by request id** so a refresh/replay returns the stored
+  result instead of running (and charging) again — the fix for the Bolt.new
+  exploit. Refunds on action failure. Ships reference in-memory quota/idempotency
+  stores (back them with Redis/a DB in production).
+
+See `examples/guarded-agent-app` for the vulnerable example, fixed.
 
 ## How to help
 
