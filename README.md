@@ -366,9 +366,27 @@ wild:
 afw scan ./my-agent-app        # ✗ BLOCK: AFW-AUTHZ-001 model invoked before the credit check
 ```
 
-Try it on the bundled example: `afw scan examples/vulnerable-agent-app`. Runtime
-enforcement of these (an embeddable guardrail that checks-before-acts and confines
-scope at request time) is the next increment — see [`docs/ROADMAP.md`](docs/ROADMAP.md).
+Try it on the bundled example: `afw scan examples/vulnerable-agent-app`.
+
+**Then *enforce* the fix at run time** with the embeddable `agentfirewall.guardrails`
+library — this is what actually stops both exploits, not just detects them:
+
+```python
+from agentfirewall.guardrails import InputGuard, ScopePolicy, PreconditionGate, InMemoryQuota
+
+guard = InputGuard(ScopePolicy.for_tools("search_menu", "place_order"))  # deny code exec / off-scope tools
+gate  = PreconditionGate(InMemoryQuota(balances={"user-1": 5}))          # check-before-act + idempotency
+
+def handle_chat(user_id, prompt, request_id):
+    guard.check_input(prompt).raise_if_blocked()                 # scope confinement
+    return gate.run(user_id, lambda: agent.run(prompt),          # quota reserved BEFORE the agent runs;
+                    idempotency_key=request_id)                  # a refresh with the same id can't replay
+```
+
+`PreconditionGate` reserves quota atomically *before* the agent runs and returns the
+cached result on a replay (so the refresh exploit can't burn free tokens);
+`InputGuard` denies `run_python`/off-allowlist tool calls and prompt-injection. See
+`examples/guarded-agent-app` for the vulnerable example rewritten safely.
 
 ## Use it in CI (GitHub Action)
 

@@ -6,6 +6,18 @@ All notable changes to AgentFirewall are documented here. This project follows
 
 ## [Unreleased]
 
+## [0.9.0] — Runtime guardrail library
+
+- `agentfirewall.guardrails`: embeddable enforcement for deployed agents.
+  - **`PreconditionGate`**: authorize + atomically reserve quota *before* the agent
+    runs, idempotent by request id (a refresh/replay returns the cached result
+    instead of re-running/charging) — the fix for the Bolt.new refresh exploit.
+    Refunds on failure; ships reference in-memory quota/idempotency stores.
+  - **`InputGuard` / `ScopePolicy`**: confine an agent to a tool allowlist, deny
+    code/shell tools, and reject prompt-injection/exfiltration in input and tool
+    arguments (reuses the rule engine).
+- New `examples/guarded-agent-app` (the vulnerable example, fixed).
+
 ## [0.8.0] — Deployed-agent guardrails
 
 - New protection *direction*: harden an agent **you deploy**, not just artifacts you
@@ -75,7 +87,8 @@ All notable changes to AgentFirewall are documented here. This project follows
 - `scan` / `verify` / `install` / `watch` / `rules`; ALLOW/WARN/BLOCK policy;
   text / JSON / SARIF output. MIT licensed, zero required dependencies.
 
-[Unreleased]: https://github.com/mmedabo/agentfirewall/compare/v0.8.0...HEAD
+[Unreleased]: https://github.com/mmedabo/agentfirewall/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.9.0
 [0.8.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.8.0
 [0.7.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.7.0
 [0.6.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.6.0

@@ -258,7 +258,44 @@ if result.verdict is Verdict.BLOCK:
     raise SystemExit("refusing to install")
 ```
 
-The runtime pieces are importable too:
+## Guardrails for agents you deploy (Python library)
+
+Static scan finds the deployed-agent bugs; `agentfirewall.guardrails` *enforces* the
+fix at request time.
+
+```python
+from agentfirewall.guardrails import (
+    InputGuard, ScopePolicy, PreconditionGate, InMemoryQuota, QuotaExceeded,
+)
+
+# Confine the agent to its business tools; deny code execution + injection.
+guard = InputGuard(ScopePolicy.for_tools("search_menu", "place_order"))
+# Authorize + reserve quota before the agent runs, idempotent by request id.
+gate = PreconditionGate(InMemoryQuota(balances={"user-1": 5}))
+
+def handle_chat(user_id, prompt, request_id):
+    guard.check_input(prompt).raise_if_blocked()
+    try:
+        return gate.run(user_id, lambda: agent.run(prompt), idempotency_key=request_id)
+    except QuotaExceeded:
+        return {"error": "out of credits"}, 402
+
+# In your model's tool-dispatch hook, gate every tool call:
+def before_tool_call(name, arguments):
+    guard.check_tool_call(name, arguments).raise_if_blocked()   # blocks run_python etc.
+```
+
+- `PreconditionGate.run` consumes quota **atomically before** the action and returns
+  the cached result on a **replay** with the same `idempotency_key` — so a page
+  refresh can't burn free tokens (the Bolt.new exploit) and a zero-quota user never
+  reaches the agent. Failed actions are refunded. There's also a `@gate.guard()`
+  decorator.
+- `InputGuard` denies tool calls outside the allowlist or that run code/shell, and
+  rejects prompt-injection / exfiltration in input and tool arguments.
+- The bundled `InMemoryQuota` / `InMemoryIdempotencyStore` are single-process
+  references; back them with Redis or a database in production (same interface).
+
+The runtime *host-side* pieces are importable too:
 
 ```python
 from agentfirewall.runtime.egress import EgressPolicy

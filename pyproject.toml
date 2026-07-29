@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "agentfirewall"
-version = "0.8.0"
+version = "0.9.0"
 description = "A security firewall for AI agents, skills and MCP servers — scan before you install."
 readme = "README.md"
 requires-python = ">=3.9"

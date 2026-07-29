@@ -43,6 +43,9 @@ agentfirewall/
     mcp_proxy.py   McpInspector + stdio relay (afw mcp-proxy)
     isolation.py   run_isolated() / run_allowlisted() — kernel netns jail (afw run --isolate)
     _jailrun.py    in-namespace supervisor: loopback + TCP→UDS forwarder for allowlisting
+  guardrails/
+    scope.py       InputGuard + ScopePolicy — confine a deployed agent at runtime
+    gate.py        PreconditionGate — check-before-act quota + idempotency
   web/
     server.py      stdlib HTTP server + token-guarded JSON API (afw serve)
     index.html     self-contained SPA
@@ -138,6 +141,20 @@ Independent of the scanning pipeline — it watches execution rather than files:
   no-IP namespace running `_jailrun` (which brings up loopback, runs a TCP→UDS
   forwarder, and points `HTTP(S)_PROXY` at it). The UDS reaches across the namespace
   boundary — IP traffic can't — so the broker's allowlist is the only egress.
+
+## The guardrails library (`guardrails/`)
+
+Unlike everything else, this isn't invoked by the scanner or CLI — developers
+**import** it into their own agent to enforce the deployed-agent protections at
+request time (the runtime counterpart to the `AFW-AGENCY-*` / `AFW-AUTHZ-*` static
+checks):
+
+- **`InputGuard`** reuses the rule engine (`PromptInjectionRule`, `OBFUSCATION`,
+  `SECRETS`, …) on user input and tool-call arguments, and enforces a `ScopePolicy`
+  (tool allowlist, deny code-exec tools) — returning a `GuardDecision`.
+- **`PreconditionGate`** wraps the agent action: it reserves quota atomically before
+  running and is idempotent by request key, with reference in-memory stores behind
+  swappable interfaces.
 
 ## Extension points
 
