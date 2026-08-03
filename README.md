@@ -55,6 +55,8 @@ a clear, auditable report of exactly why.
 | 🎟️ **Broken authorization** *(deployed agents)* | the expensive agent action runs *before* the quota/authz check (TOCTOU), or the limit is only enforced client-side (the Bolt.new refresh exploit) |
 | 🔌 **Unauthenticated MCP** | a remote MCP server wired up with no auth / plaintext `http://` (the 2026 MCP-CVE class) |
 | 🖼️ **Auto-fetch exfiltration** | reference-style markdown/`<img>` that auto-loads an external URL carrying data (the EchoLeak zero-click channel) |
+| 📚 **RAG poisoning** | untrusted content written into a shared vector store, or unvetted web docs indexed for retrieval |
+| 📦 **Slopsquatting** | a dependency/import matching a suspect AI-hallucinated package name (opt-in feed) |
 
 Every detection is mapped to an industry framework — **OWASP Top 10 for LLM Apps**,
 **OWASP Top 10 for Agentic Apps**, **MITRE ATLAS**, **MCP threat research** and

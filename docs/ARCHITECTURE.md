@@ -151,7 +151,9 @@ checks):
 
 - **`InputGuard`** reuses the rule engine (`PromptInjectionRule`, `OBFUSCATION`,
   `SECRETS`, …) on user input and tool-call arguments, and enforces a `ScopePolicy`
-  (tool allowlist, deny code-exec tools) — returning a `GuardDecision`.
+  (tool allowlist, deny code-exec tools) — returning a `GuardDecision`. It also
+  supports **taint tracking** (`Tainted` / `taint()`): data marked as
+  untrusted-derived is refused from reaching sensitive tool sinks (CaMeL-style).
 - **`PreconditionGate`** wraps the agent action: it reserves quota atomically before
   running and is idempotent by request key, with reference in-memory stores behind
   swappable interfaces.

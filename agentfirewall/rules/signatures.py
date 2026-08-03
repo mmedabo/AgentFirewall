@@ -468,9 +468,45 @@ AGENT_AGENCY = PatternRule(
     ],
 )
 
+# --------------------------------------------------------------------------- #
+# 12. RAG / vector-store poisoning (OWASP LLM08, ASI06)
+#     Untrusted content written into a shared retrieval index poisons what the
+#     agent retrieves for everyone (2026 research: ~5 docs can steer 90% of
+#     responses). We flag untrusted-content writes and unvalidated web ingestion.
+# --------------------------------------------------------------------------- #
+RAG_POISONING = PatternRule(
+    id="rag-poisoning",
+    category="rag-poisoning",
+    default_references=(F.LLM08_VECTOR_EMBEDDING, F.AGENTIC_MEMORY_POISONING),
+    signatures=[
+        compile_sig(
+            "AFW-RAG-001", "Untrusted content written into a vector store / KB", S.MEDIUM,
+            r"\b(upsert|add_documents|add_texts|add_embeddings|from_documents|from_texts)\s*\("
+            r"|\b(?:index|collection|vector_?store|vectordb|vector_db|kb|knowledge_?base)\w*"
+            r"\.(?:add|insert|upsert)\s*\(",
+            "Writes user/untrusted-derived content into a shared vector store or knowledge "
+            "base — this poisons RAG retrieval for every user (LLM08 / memory poisoning).",
+            "Validate and attribute ingested content; isolate untrusted data from the shared "
+            "index, or gate ingestion behind review.",
+            requires_also=r"user_input|user_message|user_msg|request\.|\breq\.|upload|"
+            r"scraped|crawl|fetched|external|untrusted|\bcomment\b|\breview\b|message",
+        ),
+        compile_sig(
+            "AFW-RAG-002", "Unvalidated web documents indexed into RAG", S.MEDIUM,
+            r"\b(WebBaseLoader|UnstructuredURLLoader|RecursiveUrlLoader|SitemapLoader|"
+            r"PlaywrightURLLoader|AsyncHtmlLoader|SeleniumURLLoader)\s*\(",
+            "Loads documents from the web and indexes them for retrieval without validation — "
+            "a classic RAG-poisoning path (attacker-controlled pages become retrieved context).",
+            "Sanitize and vet external documents before indexing; prefer trusted, pinned sources.",
+            requires_also=r"add_documents|from_documents|upsert|\.add\(|VectorStore|Chroma|"
+            r"Pinecone|FAISS|Qdrant|Weaviate|embed",
+        ),
+    ],
+)
+
 # All PatternRules exported for the registry.
 PATTERN_RULES = [
     SECRETS, NETWORK, OBFUSCATION, DESTRUCTIVE, FILESYSTEM,
     EMBEDDED_SECRETS, DESERIALIZATION, OUTPUT_HANDLING, ANTI_FORENSICS,
-    MEMORY_POISONING, AGENT_AGENCY,
+    MEMORY_POISONING, AGENT_AGENCY, RAG_POISONING,
 ]
