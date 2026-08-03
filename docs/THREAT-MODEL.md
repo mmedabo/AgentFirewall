@@ -109,8 +109,15 @@ Every detection cites the framework(s) it maps to (see `agentfirewall/frameworks
 | `AFW-DRIFT-010…013` | up to CRITICAL | rug-pull | MCP:Rug-Pull, OWASP-Agentic:Privilege-Compromise |
 | `AFW-PROV-001…002` | INFO | provenance | SLSA:Unsigned-Artifact, SLSA:Provenance |
 | `AFW-IOC-001…004` | up to CRITICAL | threat-intel | Threat-Intel:Known-Malicious-IoC, Revoked-Signer |
-| `AFW-AGENCY-001…003` | up to CRITICAL | excessive-agency | OWASP-LLM06, OWASP-Agentic:Tool-Misuse |
+| `AFW-AGENCY-001…003` | up to CRITICAL | excessive-agency | OWASP-LLM06, OWASP-ASI02, OWASP-ASI05 |
 | `AFW-AUTHZ-001…002` | up to HIGH | authorization | CWE-367 (TOCTOU), OWASP-API:BFLA, OWASP-LLM10 |
+| `AFW-MCP-001…003` | up to HIGH | permissions | OWASP-LLM06, OWASP-ASI03, OWASP-API:BFLA |
+| `AFW-NET-007` | MEDIUM | exfiltration | MITRE-ATLAS:Exfiltration, OWASP-LLM02 (EchoLeak-class) |
+
+> Agentic references use the official **OWASP Top 10 for Agentic Applications 2026**
+> IDs (`ASI01`–`ASI10`). The MCP-without-auth (`AFW-MCP-003`) and auto-fetch-exfil
+> (`AFW-NET-007`) checks, and the ASI-ID adoption, were added from the daily
+> research scout's 2026-08-03 digest.
 
 ## 6. The rug-pull defense (stateful layer)
 

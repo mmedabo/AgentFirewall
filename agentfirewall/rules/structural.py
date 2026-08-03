@@ -218,12 +218,14 @@ class PermissionOverreachRule(Rule):
         # MCP servers that bake secrets into `env` or auto-approve their tools.
         # (Runs independently of declared tools, since MCP configs have none.)
         for issue in meta.get("mcp_risks", []) or []:
+            refs = tuple(issue.get("references")
+                         or (F.LLM06_EXCESSIVE_AGENCY, F.AGENTIC_PRIVILEGE_COMPROMISE))
             yield Finding(
                 issue["rule_id"], issue["title"], Severity.from_name(issue["severity"]),
                 self.category, issue["message"], manifest_path, 0,
                 evidence=issue.get("evidence", ""),
                 remediation=issue.get("remediation", ""),
-                references=(F.LLM06_EXCESSIVE_AGENCY, F.AGENTIC_PRIVILEGE_COMPROMISE),
+                references=refs,
             )
 
         declared = meta.get("declared_tools")

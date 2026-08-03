@@ -121,6 +121,19 @@ NETWORK = PatternRule(
             requires_also=r"env|token|secret|password|os\.environ|process\.env|"
             r"open\(|read\(|\.ssh|\.aws",
         ),
+        compile_sig(
+            "AFW-NET-007", "Auto-fetched image/link with a dynamic URL (exfil channel)",
+            S.MEDIUM,
+            r"!\[[^\]]*\]\(\s*https?://[^)\s]*[?{$]"          # markdown image, dynamic URL
+            r"|<img\b[^>]*\bsrc\s*=\s*[\"']?\s*https?://[^\"'>\s]*[?{$]"  # <img> auto-fetch
+            r"|^\s*\[[^\]]+\]:\s*https?://\S*[?{$]",          # reference-style link definition
+            "An image/link auto-fetches from an external URL carrying dynamic data "
+            "(query string or template interpolation) — the zero-click channel EchoLeak "
+            "(CVE-2025-32711) used to exfiltrate data from an agent's rendered output.",
+            "Disallow auto-loaded external images/links in agent output; strip, proxy, or "
+            "allowlist rendered URLs so an injected reference can't carry data out.",
+            references=(F.ATLAS_EXFILTRATION, F.LLM02_SENSITIVE_INFO, F.LLM01_PROMPT_INJECTION),
+        ),
     ],
 )
 
@@ -428,6 +441,7 @@ AGENT_AGENCY = PatternRule(
             "Executes code built from user/request input — an end user can run arbitrary "
             "code through the agent (excessive agency / RCE).",
             "Never execute user-supplied code. Expose only specific, validated actions.",
+            references=(F.LLM06_EXCESSIVE_AGENCY, F.AGENTIC_RCE, F.AGENTIC_TOOL_MISUSE),
         ),
         compile_sig(
             "AFW-AGENCY-002", "Agent exposes a code-execution/shell tool", S.HIGH,
@@ -437,6 +451,7 @@ AGENT_AGENCY = PatternRule(
             "Registers a tool that runs arbitrary code/shell for the agent. Rarely fits a "
             "narrow business purpose and is a top target for abuse.",
             "Remove code/shell tools from user-facing agents, or gate them behind strict authz.",
+            references=(F.LLM06_EXCESSIVE_AGENCY, F.AGENTIC_RCE, F.AGENTIC_TOOL_MISUSE),
         ),
         compile_sig(
             "AFW-AGENCY-003", "System prompt grants unrestricted scope", S.MEDIUM,

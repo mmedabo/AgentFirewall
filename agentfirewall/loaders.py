@@ -16,7 +16,7 @@ import json
 import os
 import re
 import zipfile
-from typing import Any, Iterable
+from typing import Any, Iterable, Optional
 
 from .models import Artifact, ScannedFile
 
@@ -226,6 +226,51 @@ def _parse_frontmatter(text: str) -> dict[str, Any]:
 
 
 _SECRET_ENV_HINT = re.compile(r"(key|token|secret|password|passwd|credential)", re.IGNORECASE)
+_REMOTE_TRANSPORTS = {"http", "https", "sse", "streamable-http", "streamable_http", "ws", "wss"}
+_AUTH_HINT = re.compile(r"auth|authorization|bearer|token|api[-_]?key|credential",
+                        re.IGNORECASE)
+
+
+def _mcp_auth_risk(sname: str, cfg: dict) -> Optional[dict]:
+    """Flag a remote MCP server configured with no authentication."""
+    url = str(cfg.get("url") or cfg.get("endpoint") or cfg.get("serverUrl") or "")
+    transport = str(cfg.get("type") or cfg.get("transport") or "").lower()
+    is_remote = bool(url) or transport in _REMOTE_TRANSPORTS
+    if not is_remote:
+        return None  # stdio/command servers aren't network-exposed
+
+    # Any sign of auth on the connection?
+    blob = json.dumps(cfg)
+    headers = cfg.get("headers")
+    has_header_auth = isinstance(headers, dict) and any(_AUTH_HINT.search(k) for k in headers)
+    has_field_auth = any(_AUTH_HINT.search(k) for k in cfg if k not in ("url", "endpoint"))
+    has_url_creds = "@" in url.split("//", 1)[-1].split("/", 1)[0]  # user:pass@host
+    authed = has_header_auth or has_field_auth or has_url_creds or bool(_AUTH_HINT.search(blob))
+
+    plaintext = url.startswith("http://")
+    if authed and not plaintext:
+        return None
+
+    if not authed:
+        msg = (f"Remote MCP server '{sname}' is configured with no authentication"
+               + (" and over plaintext http://" if plaintext else "")
+               + ". Unauthenticated MCP endpoints let anyone who can reach them drive the "
+                 "agent's tools (cf. the 2026 MCP CVEs and 400+ exposed public servers).")
+    else:
+        msg = (f"Remote MCP server '{sname}' is reached over plaintext http:// — "
+               "credentials and tool traffic are exposed in transit.")
+    return {
+        "rule_id": "AFW-MCP-003",
+        "title": "Remote MCP server without authentication",
+        "severity": "HIGH" if not authed else "MEDIUM",
+        "message": msg,
+        "evidence": (url or f"{sname}: {transport or 'remote'}")[:160],
+        "remediation": "Require authentication (bearer token / API key) and use https; "
+                       "never expose an MCP endpoint that executes tools without authz.",
+        "references": ["OWASP-ASI03:Identity-and-Privilege-Abuse",
+                       "OWASP-API:Broken-Function-Level-Authorization",
+                       "OWASP-ASI04:Agentic-Supply-Chain"],
+    }
 
 
 def _parse_mcp(text: str, artifact: Artifact) -> None:
@@ -272,6 +317,12 @@ def _parse_mcp(text: str, artifact: Artifact) -> None:
                         "evidence": f"{key}: {approved}",
                         "remediation": "Require explicit approval for tool calls.",
                     })
+
+            # Remote MCP server reached without authentication (ASI03/ASI05).
+            # 2026 saw many MCP CVEs and 400+ public MCP servers exposed with no auth.
+            risk = _mcp_auth_risk(sname, cfg)
+            if risk:
+                risks.append(risk)
 
     # Tool descriptions can appear in server-manifest style configs.
     tools = data.get("tools")

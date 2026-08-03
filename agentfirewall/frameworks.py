@@ -24,13 +24,25 @@ LLM06_EXCESSIVE_AGENCY = "OWASP-LLM06:Excessive-Agency"
 LLM07_SYSTEM_PROMPT_LEAK = "OWASP-LLM07:System-Prompt-Leakage"
 LLM10_UNBOUNDED = "OWASP-LLM10:Unbounded-Consumption"
 
-# --- OWASP Top 10 for Agentic Applications (2026) --------------------------- #
-AGENTIC_MEMORY_POISONING = "OWASP-Agentic:Memory-Poisoning"
-AGENTIC_TOOL_MISUSE = "OWASP-Agentic:Tool-Misuse"
-AGENTIC_PRIVILEGE_COMPROMISE = "OWASP-Agentic:Privilege-Compromise"
-AGENTIC_INTENT_MANIPULATION = "OWASP-Agentic:Intent-Breaking-and-Goal-Manipulation"
+# --- OWASP Top 10 for Agentic Applications 2026 (ASI01-ASI10) ---------------- #
+# Official identifiers from the OWASP GenAI Security Project (published 2025-12-09).
+AGENTIC_GOAL_HIJACK = "OWASP-ASI01:Agent-Goal-Hijack"
+AGENTIC_TOOL_MISUSE = "OWASP-ASI02:Tool-Misuse-and-Exploitation"
+AGENTIC_PRIVILEGE_COMPROMISE = "OWASP-ASI03:Identity-and-Privilege-Abuse"
+AGENTIC_SUPPLY_CHAIN = "OWASP-ASI04:Agentic-Supply-Chain"
+AGENTIC_RCE = "OWASP-ASI05:Unexpected-Code-Execution"
+AGENTIC_MEMORY_POISONING = "OWASP-ASI06:Memory-and-Context-Poisoning"
+AGENTIC_INTER_AGENT = "OWASP-ASI07:Insecure-Inter-Agent-Communication"
+AGENTIC_CASCADING = "OWASP-ASI08:Cascading-Failures"
+AGENTIC_HUMAN_TRUST = "OWASP-ASI09:Human-Agent-Trust-Exploitation"
+AGENTIC_ROGUE = "OWASP-ASI10:Rogue-Agents"
+
+# Back-compat aliases for concepts named before the 2026 Top 10 finalized IDs.
+AGENTIC_INTENT_MANIPULATION = AGENTIC_GOAL_HIJACK          # -> ASI01
+AGENTIC_IDENTITY_SPOOFING = AGENTIC_PRIVILEGE_COMPROMISE   # -> ASI03
+# Repudiation/untraceability is from the OWASP Agentic Threats & Mitigations guide
+# (not a numbered ASI risk); keep an explicit reference for anti-forensics findings.
 AGENTIC_REPUDIATION = "OWASP-Agentic:Repudiation-and-Untraceability"
-AGENTIC_IDENTITY_SPOOFING = "OWASP-Agentic:Identity-Spoofing-and-Impersonation"
 
 # --- MITRE ATLAS techniques ------------------------------------------------- #
 ATLAS_EXFILTRATION = "MITRE-ATLAS:Exfiltration"
