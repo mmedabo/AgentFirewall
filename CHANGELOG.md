@@ -6,6 +6,24 @@ All notable changes to AgentFirewall are documented here. This project follows
 
 ## [Unreleased]
 
+## [1.2.0] — Research-driven detections, batch 2
+
+Second batch from the research scout — RAG poisoning, a taint guard, slopsquatting.
+
+- **RAG / vector-store poisoning** (`AFW-RAG-001/002`, OWASP LLM08 + ASI06): flags
+  untrusted/user-derived content written into a shared vector store or knowledge
+  base, and unvalidated web documents indexed for retrieval (~5 poisoned docs can
+  steer 90% of responses).
+- **Taint / provenance guard** (CaMeL-style): `agentfirewall.guardrails` gains
+  `Tainted` / `taint()` and a `ScopePolicy` taint gate — untrusted-derived data is
+  refused from reaching sensitive tool sinks (code exec, send/email, http, sql,
+  file write, payments…). Defends against indirect prompt injection, the dominant
+  2026 attack. Configurable via `taint_sensitive_sinks` / `deny_tainted_to`.
+- **Slopsquatting** (`AFW-IOC-005`): the threat-intel feed gains a `packages` list;
+  scans imports / `requirements.txt` / `package.json` deps for suspect
+  AI-hallucinated package names (opt-in feed; the shipped seed is empty on purpose).
+- New `examples/rag-poisoning-app`.
+
 ## [1.1.0] — Research-driven detections
 
 First batch of adaptations from the daily research scout (2026-08-03 digest):
@@ -131,7 +149,8 @@ package to Production/Stable, and is the first tagged/published version.
 - `scan` / `verify` / `install` / `watch` / `rules`; ALLOW/WARN/BLOCK policy;
   text / JSON / SARIF output. MIT licensed, zero required dependencies.
 
-[Unreleased]: https://github.com/mmedabo/agentfirewall/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/mmedabo/agentfirewall/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v1.2.0
 [1.1.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v1.1.0
 [1.0.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v1.0.0
 [0.9.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.9.0

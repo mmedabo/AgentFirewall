@@ -26,6 +26,42 @@ _CODE_EXEC_TOOLS = {
     "shell", "bash", "exec", "eval", "system", "os_system", "subprocess",
 }
 
+#: Sensitive sinks that untrusted ("tainted") data must not reach — the CaMeL
+#: idea that data from untrusted sources should not drive consequential actions.
+_SENSITIVE_SINKS = _CODE_EXEC_TOOLS | {
+    "send", "send_email", "email", "sendmail", "http_request", "httprequest",
+    "fetch", "post", "request", "sql", "query", "execute_sql", "run_sql",
+    "db_query", "write_file", "writefile", "delete", "delete_file", "transfer",
+    "transfer_money", "pay", "payment", "checkout", "browse", "open_url",
+    "webhook", "upload",
+}
+
+
+class Tainted(str):
+    """A string marked as derived from untrusted content.
+
+    Wrap data that comes from outside the trust boundary — tool outputs, retrieved
+    documents, web pages, other agents' messages — so a :class:`ScopePolicy` can
+    refuse to let it drive a sensitive tool call (indirect prompt-injection defense).
+    """
+
+    __slots__ = ()
+
+
+def taint(value: Any) -> Tainted:
+    """Mark ``value`` as untrusted-derived."""
+    return value if isinstance(value, Tainted) else Tainted(str(value))
+
+
+def _has_taint(value: Any) -> bool:
+    if isinstance(value, Tainted):
+        return True
+    if isinstance(value, dict):
+        return any(_has_taint(v) for v in value.values())
+    if isinstance(value, (list, tuple, set)):
+        return any(_has_taint(v) for v in value)
+    return False
+
 
 class GuardrailBlocked(Exception):
     """Raised when a guardrail denies a request."""
@@ -69,6 +105,11 @@ class ScopePolicy:
     block_severity: Severity = Severity.HIGH
     #: Optional hard cap on user input length.
     max_input_chars: Optional[int] = None
+    #: Refuse tool calls that carry tainted (untrusted-derived) data into a
+    #: sensitive sink — the CaMeL-style defense against indirect prompt injection.
+    taint_sensitive_sinks: bool = True
+    #: Tool names tainted data may not reach. ``None`` == the built-in sink set.
+    deny_tainted_to: Optional[set[str]] = None
 
     @classmethod
     def for_tools(cls, *tools: str, **kwargs: Any) -> "ScopePolicy":
@@ -105,7 +146,13 @@ class InputGuard:
         return GuardDecision(True, "ok", findings)
 
     # ---- tool calls ------------------------------------------------------ #
-    def check_tool_call(self, name: str, arguments: Any = "") -> GuardDecision:
+    def check_tool_call(self, name: str, arguments: Any = "",
+                        tainted: Optional[bool] = None) -> GuardDecision:
+        """Decide whether the agent may call ``name`` with ``arguments``.
+
+        ``tainted`` marks the call as carrying untrusted-derived data; if omitted,
+        taint is inferred from :class:`Tainted` values inside ``arguments``.
+        """
         p = self.policy
         low = name.strip().lower()
         base = low.split("(", 1)[0]
@@ -117,6 +164,19 @@ class InputGuard:
             return GuardDecision(
                 False, f"tool '{name}' is not in the allowed set "
                 f"{sorted(p.allowed_tools)}")
+
+        # Taint / provenance gate: untrusted-derived data must not drive a
+        # sensitive tool (CaMeL-style indirect-prompt-injection defense).
+        is_tainted = _has_taint(arguments) if tainted is None else tainted
+        if is_tainted:
+            sinks = ({t.lower() for t in p.deny_tainted_to}
+                     if p.deny_tainted_to is not None
+                     else (_SENSITIVE_SINKS if p.taint_sensitive_sinks else set()))
+            if low in sinks or base in sinks:
+                return GuardDecision(
+                    False, f"tool '{name}' may not receive tainted (untrusted-derived) "
+                    "data — indirect prompt-injection risk")
+
         arg_text = arguments if isinstance(arguments, str) else _to_text(arguments)
         findings = _scan(arg_text, "script", self._arg_rules) if arg_text else []
         severe = [f for f in findings if f.severity >= p.block_severity]

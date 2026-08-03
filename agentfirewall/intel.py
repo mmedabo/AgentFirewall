@@ -42,6 +42,41 @@ def _norm_name(name: str) -> str:
     return re.sub(r"[-_. ]+", "-", base).strip("-")
 
 
+_IMPORT_PY = re.compile(r"^\s*(?:import|from)\s+([A-Za-z0-9_]+)")
+_IMPORT_JS = re.compile(r"""(?:require\(|from\s+)['"]([^'"]+)['"]""")
+_REQ_LINE = re.compile(r"^\s*([A-Za-z0-9][A-Za-z0-9._-]+)\s*(?:[=<>~!\[;]|$)")
+_PKG_DEP = re.compile(r'"([^"]+)"\s*:\s*"[^"]*"')
+
+
+def _referenced_packages(text: str, path: str):
+    """Yield (package_name, lineno) for imports / requirements / package.json deps."""
+    low = path.lower()
+    is_req = low.endswith(".txt") or "requirements" in low
+    is_pkgjson = low.endswith("package.json")
+    is_py = low.endswith(".py")
+    refs = set()
+    for i, line in enumerate(text.splitlines(), start=1):
+        if is_py:
+            m = _IMPORT_PY.match(line)
+            if m:
+                refs.add((m.group(1).lower(), i))
+        for m in _IMPORT_JS.finditer(line):
+            name = m.group(1)
+            if name.startswith("."):
+                continue
+            base = ("/".join(name.split("/")[:2]) if name.startswith("@")
+                    else name.split("/")[0])
+            refs.add((base.lower(), i))
+        if is_req:
+            m = _REQ_LINE.match(line)
+            if m and not line.lstrip().startswith("#"):
+                refs.add((m.group(1).lower(), i))
+        if is_pkgjson:
+            for m in _PKG_DEP.finditer(line):
+                refs.add((m.group(1).lower(), i))
+    return refs
+
+
 @dataclass
 class ThreatIntel:
     """A merged set of indicators of compromise."""
@@ -50,6 +85,7 @@ class ThreatIntel:
     bad_domains: set[str] = field(default_factory=set)    # lowercased
     bad_hashes: set[str] = field(default_factory=set)     # lowercased sha256
     revoked_signers: set[str] = field(default_factory=set)
+    suspect_packages: set[str] = field(default_factory=set)  # lowercased dependency names
     sources: list[str] = field(default_factory=list)
 
     # ---- construction ---------------------------------------------------- #
@@ -97,7 +133,7 @@ class ThreatIntel:
         elif ext in (".txt", ".list", ""):
             stem = os.path.splitext(os.path.basename(path))[0].lower()
             key = {"names": "names", "domains": "domains", "hashes": "hashes",
-                   "signers": "signers"}.get(stem)
+                   "signers": "signers", "packages": "packages"}.get(stem)
             if key:
                 entries = [ln.strip() for ln in text.splitlines()
                            if ln.strip() and not ln.startswith("#")]
@@ -113,10 +149,12 @@ class ThreatIntel:
             self.bad_hashes.add(str(h).strip().lower())
         for s in data.get("signers", []) or []:
             self.revoked_signers.add(str(s).strip())
+        for pkg in data.get("packages", []) or []:
+            self.suspect_packages.add(str(pkg).strip().lower().replace("_", "-"))
 
     def is_empty(self) -> bool:
         return not (self.bad_names or self.bad_domains or self.bad_hashes
-                    or self.revoked_signers)
+                    or self.revoked_signers or self.suspect_packages)
 
     # ---- matching -------------------------------------------------------- #
     def check(self, artifact: Artifact) -> list[Finding]:
@@ -146,6 +184,28 @@ class ThreatIntel:
                     remediation="Do not install; this exact file is flagged as malicious.",
                     references=(F.SUPPLY_KNOWN_MALICIOUS,),
                 ))
+
+        # 3b. Depends on / imports a suspect (e.g. AI-hallucinated) package —
+        #     "slopsquatting", where attackers register names LLMs invent.
+        if self.suspect_packages:
+            for sf in artifact.files:
+                if sf.is_binary:
+                    continue
+                for name, lineno in _referenced_packages(sf.text, sf.path):
+                    if name.replace("_", "-") in self.suspect_packages:
+                        out.append(Finding(
+                            "AFW-IOC-005", "Depends on a suspect (slopsquatting) package",
+                            Severity.HIGH, "threat-intel",
+                            f"'{name}' is on the suspect-package feed (commonly an "
+                            "AI-hallucinated name that attackers register). Verify it exists "
+                            "and is the intended dependency before installing.",
+                            path=sf.path, line=lineno, evidence=name,
+                            remediation="Confirm the package is real and correct; pin trusted "
+                            "dependencies and remove hallucinated ones.",
+                            references=(F.SUPPLY_SLOPSQUATTING, F.SUPPLY_KNOWN_MALICIOUS,
+                                        F.LLM03_SUPPLY_CHAIN),
+                        ))
+                        break  # one per file
 
         # 3. Contacts a known-malicious domain.
         if self.bad_domains:

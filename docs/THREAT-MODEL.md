@@ -113,6 +113,8 @@ Every detection cites the framework(s) it maps to (see `agentfirewall/frameworks
 | `AFW-AUTHZ-001…002` | up to HIGH | authorization | CWE-367 (TOCTOU), OWASP-API:BFLA, OWASP-LLM10 |
 | `AFW-MCP-001…003` | up to HIGH | permissions | OWASP-LLM06, OWASP-ASI03, OWASP-API:BFLA |
 | `AFW-NET-007` | MEDIUM | exfiltration | MITRE-ATLAS:Exfiltration, OWASP-LLM02 (EchoLeak-class) |
+| `AFW-RAG-001…002` | MEDIUM | rag-poisoning | OWASP-LLM08, OWASP-ASI06 |
+| `AFW-IOC-005` | HIGH | threat-intel | Supply-Chain:Slopsquatting, OWASP-LLM03 |
 
 > Agentic references use the official **OWASP Top 10 for Agentic Applications 2026**
 > IDs (`ASI01`–`ASI10`). The MCP-without-auth (`AFW-MCP-003`) and auto-fetch-exfil

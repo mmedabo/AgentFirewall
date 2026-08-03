@@ -1,5 +1,6 @@
 {
-  "_comment": "Illustrative starter IoC feed shipped with AgentFirewall. These are demo/reserved values used by the example artifacts and docs, NOT a real threat feed. Point `afw scan --intel <path>` at your own maintained feeds, or drop files into ~/.config/agentfirewall/intel/. Formats: this JSON schema, or names.txt / domains.txt / hashes.txt / signers.txt.",
+  "_comment": "Illustrative starter IoC feed shipped with AgentFirewall. These are demo/reserved values used by the example artifacts and docs, NOT a real threat feed. Point `afw scan --intel <path>` at your own maintained feeds, or drop files into ~/.config/agentfirewall/intel/. Formats: this JSON schema, or names.txt / domains.txt / hashes.txt / signers.txt / packages.txt.",
+  "_packages_note": "'packages' lists suspect/AI-hallucinated dependency names (slopsquatting). Left empty on purpose — supply your own so real package names are never wrongly flagged.",
   "names": [
     "super-helpr",
     "definitely-not-malware"
@@ -12,5 +13,6 @@
   "hashes": [],
   "signers": [
     "attacker@evil.example"
-  ]
+  ],
+  "packages": []
 }

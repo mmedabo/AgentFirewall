@@ -285,6 +285,23 @@ def before_tool_call(name, arguments):
     guard.check_tool_call(name, arguments).raise_if_blocked()   # blocks run_python etc.
 ```
 
+**Taint / provenance (indirect prompt-injection defense).** Wrap data that comes
+from outside the trust boundary — tool outputs, retrieved documents, other agents'
+messages — with `taint()`, and the guard refuses to let it drive a *sensitive*
+tool (code exec, send/email, http, sql, file write, payments…):
+
+```python
+from agentfirewall.guardrails import taint
+
+retrieved = taint(vector_store.query(q))          # untrusted-derived
+guard.check_tool_call("send_email", {"body": retrieved}).raise_if_blocked()  # BLOCKED
+guard.check_tool_call("search_menu", {"q": retrieved})                       # allowed (benign tool)
+```
+
+Tune with `ScopePolicy(taint_sensitive_sinks=…, deny_tainted_to={"pay", "transfer"})`,
+or pass `tainted=True` explicitly. This is the CaMeL-style "untrusted data must not
+drive consequential actions" defense against indirect prompt injection.
+
 - `PreconditionGate.run` consumes quota **atomically before** the action and returns
   the cached result on a **replay** with the same `idempotency_key` — so a page
   refresh can't burn free tokens (the Bolt.new exploit) and a zero-quota user never

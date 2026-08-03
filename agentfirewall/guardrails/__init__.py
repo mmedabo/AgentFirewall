@@ -29,13 +29,22 @@ from .gate import (
     PreconditionGate,
     QuotaExceeded,
 )
-from .scope import GuardDecision, GuardrailBlocked, InputGuard, ScopePolicy
+from .scope import (
+    GuardDecision,
+    GuardrailBlocked,
+    InputGuard,
+    ScopePolicy,
+    Tainted,
+    taint,
+)
 
 __all__ = [
     "InputGuard",
     "ScopePolicy",
     "GuardDecision",
     "GuardrailBlocked",
+    "Tainted",
+    "taint",
     "PreconditionGate",
     "InMemoryQuota",
     "InMemoryIdempotencyStore",
