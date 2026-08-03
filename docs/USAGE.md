@@ -151,7 +151,9 @@ afw run --allow api.github.com --allow-port 443 --fail-on-egress -- ./tool
 
 Only allowlisted hosts get through; everything else gets a `403` and is logged.
 `--fail-on-egress` exits non-zero if anything was blocked (useful in CI).
-`--allow-loopback` permits localhost.
+`--allow-loopback` permits localhost. The proxy also applies **outbound DLP**: a
+plaintext-HTTP request carrying a secret (private key, AWS/GitHub/provider token)
+is blocked *even to an allowlisted host* (HTTPS bodies stay opaque).
 
 > Enforcement is proxy-based: it governs clients honouring `HTTP(S)_PROXY` (most
 > HTTP libraries and CLIs). For bypass-proof containment, use `--isolate` below.

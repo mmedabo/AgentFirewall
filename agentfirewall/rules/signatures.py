@@ -504,9 +504,45 @@ RAG_POISONING = PatternRule(
     ],
 )
 
+# --------------------------------------------------------------------------- #
+# 13. Insecure inter-agent / A2A communication (OWASP ASI07)
+#     A2A advertises capabilities via "agent cards" but does not mandate that
+#     they be authenticated or signature-verified — enabling agent impersonation
+#     and card shadowing. We flag cards/endpoints with no auth and disabled
+#     inter-agent verification.
+# --------------------------------------------------------------------------- #
+INTER_AGENT = PatternRule(
+    id="inter-agent",
+    category="inter-agent",
+    default_references=(F.AGENTIC_INTER_AGENT, F.AGENTIC_IDENTITY_SPOOFING),
+    signatures=[
+        compile_sig(
+            "AFW-A2A-001", "Agent-to-agent endpoint declared without authentication", S.HIGH,
+            r"(?i)\"?(authentication|securityschemes|security_schemes|schemes|security|"
+            r"authschemes|supportedauthentications?)\"?\s*[:=]\s*"
+            r"(\{\s*\}|\[\s*\]|null|none|\"none\"|\"public\"|false)",
+            "An A2A agent card / inter-agent endpoint advertises skills with no authentication "
+            "scheme — any agent can invoke it, enabling impersonation and unauthorized use.",
+            "Require per-agent auth (mTLS + OAuth2/OIDC or signed JWTs) and verify agent-card "
+            "signatures before trusting a peer.",
+            requires_also=r"(?i)a2a|agent2agent|agent[_-]?card|\.well-known/agent|"
+            r"agent-to-agent|\"skills\"\s*:|\"capabilities\"|\"streaming\"",
+        ),
+        compile_sig(
+            "AFW-A2A-002", "Inter-agent identity/signature verification disabled", S.HIGH,
+            r"(?i)(verify_signature|verify_card|verify_agent|verifyagentcard|check_signature|"
+            r"verify_peer)\s*[:=]\s*(false|none|0|off)|trust_all_agents|"
+            r"skip[_-]?(agent[_-]?)?verif\w*|disable[_-]?agent[_-]?auth|accept_any_agent",
+            "Inter-agent signature/identity verification is turned off — an attacker can "
+            "impersonate a trusted agent or shadow its card to infiltrate the workflow.",
+            "Never disable agent-card signature/identity verification for peer agents.",
+        ),
+    ],
+)
+
 # All PatternRules exported for the registry.
 PATTERN_RULES = [
     SECRETS, NETWORK, OBFUSCATION, DESTRUCTIVE, FILESYSTEM,
     EMBEDDED_SECRETS, DESERIALIZATION, OUTPUT_HANDLING, ANTI_FORENSICS,
-    MEMORY_POISONING, AGENT_AGENCY, RAG_POISONING,
+    MEMORY_POISONING, AGENT_AGENCY, RAG_POISONING, INTER_AGENT,
 ]

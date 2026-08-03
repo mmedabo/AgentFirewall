@@ -5,7 +5,7 @@
 [![CI](https://github.com/mmedabo/agentfirewall/actions/workflows/ci.yml/badge.svg)](https://github.com/mmedabo/agentfirewall/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/version-1.0.0-brightgreen.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.3.0-brightgreen.svg)](CHANGELOG.md)
 
 The AI ecosystem is exploding with shareable **agents**, **skills**, **plugins**,
 and **MCP servers** — and, just like npm packages or browser extensions, most of
@@ -57,6 +57,7 @@ a clear, auditable report of exactly why.
 | 🖼️ **Auto-fetch exfiltration** | reference-style markdown/`<img>` that auto-loads an external URL carrying data (the EchoLeak zero-click channel) |
 | 📚 **RAG poisoning** | untrusted content written into a shared vector store, or unvetted web docs indexed for retrieval |
 | 📦 **Slopsquatting** | a dependency/import matching a suspect AI-hallucinated package name (opt-in feed) |
+| 🤝 **Insecure inter-agent (A2A)** | an agent card advertising skills with no auth, or inter-agent signature verification disabled (impersonation / card shadowing) |
 
 Every detection is mapped to an industry framework — **OWASP Top 10 for LLM Apps**,
 **OWASP Top 10 for Agentic Apps**, **MITRE ATLAS**, **MCP threat research** and

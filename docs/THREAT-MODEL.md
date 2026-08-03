@@ -115,6 +115,7 @@ Every detection cites the framework(s) it maps to (see `agentfirewall/frameworks
 | `AFW-NET-007` | MEDIUM | exfiltration | MITRE-ATLAS:Exfiltration, OWASP-LLM02 (EchoLeak-class) |
 | `AFW-RAG-001…002` | MEDIUM | rag-poisoning | OWASP-LLM08, OWASP-ASI06 |
 | `AFW-IOC-005` | HIGH | threat-intel | Supply-Chain:Slopsquatting, OWASP-LLM03 |
+| `AFW-A2A-001…002` | HIGH | inter-agent | OWASP-ASI07, OWASP-ASI03 |
 
 > Agentic references use the official **OWASP Top 10 for Agentic Applications 2026**
 > IDs (`ASI01`–`ASI10`). The MCP-without-auth (`AFW-MCP-003`) and auto-fetch-exfil
@@ -175,7 +176,10 @@ front of it.
 through a **default-deny filtering proxy**. Only allowlisted destinations
 (`--allow *.github.com`) are forwarded; everything else gets a `403` and is logged.
 This blocks data exfiltration *even for a payload no static rule recognised* —
-the destination simply isn't reachable.
+the destination simply isn't reachable. It also applies **outbound DLP**: a
+plaintext-HTTP request that carries a secret (private key, AWS/GitHub/provider
+token) is blocked *even to an allowlisted host* (`EgressPolicy.dlp_scan_bodies`;
+HTTPS bodies stay opaque inside the CONNECT tunnel).
 
 ```
 afw run --allow *.github.com -- npx some-agent    # blocks any egress off github.com

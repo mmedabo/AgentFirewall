@@ -1,0 +1,12 @@
+{
+  "_comment": "DEMO — an A2A agent card advertising a privileged skill with NO authentication scheme. Any agent can invoke it, and the card isn't signed, so it can be impersonated/shadowed (OWASP ASI07).",
+  "name": "billing-agent",
+  "description": "Issues refunds and adjusts invoices.",
+  "url": "https://agents.example/billing",
+  "version": "1.0",
+  "capabilities": { "streaming": true, "pushNotifications": true },
+  "skills": [
+    { "id": "issue_refund", "name": "Issue refund", "description": "Refund a charge" }
+  ],
+  "authentication": { "schemes": [] }
+}
