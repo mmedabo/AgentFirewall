@@ -6,6 +6,20 @@ All notable changes to AgentFirewall are documented here. This project follows
 
 ## [Unreleased]
 
+## [1.3.0] — Inter-agent security + outbound DLP
+
+Third research batch — the lower-priority items, now grounded in fresh 2026 research.
+
+- **Insecure inter-agent / A2A** (`AFW-A2A-001/002`, OWASP ASI07 + ASI03): flags an
+  A2A agent card advertising skills with **no authentication scheme**, and code that
+  **disables inter-agent signature/identity verification** (`verify_signature=False`,
+  `trust_all_agents`) — the impersonation / card-shadowing class.
+- **Outbound-content DLP** in the egress firewall: `afw run` now blocks a
+  plaintext-HTTP request that carries a secret (private key, AWS/GitHub/Slack/
+  provider token) **even to an allowlisted host** (`EgressPolicy.dlp_scan_bodies`,
+  on by default; HTTPS bodies remain opaque).
+- New `examples/insecure-a2a`; README version badge corrected.
+
 ## [1.2.0] — Research-driven detections, batch 2
 
 Second batch from the research scout — RAG poisoning, a taint guard, slopsquatting.
@@ -149,7 +163,8 @@ package to Production/Stable, and is the first tagged/published version.
 - `scan` / `verify` / `install` / `watch` / `rules`; ALLOW/WARN/BLOCK policy;
   text / JSON / SARIF output. MIT licensed, zero required dependencies.
 
-[Unreleased]: https://github.com/mmedabo/agentfirewall/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/mmedabo/agentfirewall/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v1.3.0
 [1.2.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v1.2.0
 [1.1.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v1.1.0
 [1.0.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v1.0.0

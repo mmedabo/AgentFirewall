@@ -19,6 +19,7 @@ layer alone; combine it with OS network-namespace isolation (see sandbox.py's
 from __future__ import annotations
 
 import os
+import re
 import select
 import socket
 import threading
@@ -41,6 +42,9 @@ class EgressPolicy:
     allow_loopback: bool = False
     #: Default action when nothing matches.
     default_deny: bool = True
+    #: Scan plaintext-HTTP outbound requests for secrets and block them (DLP),
+    #: even to an allowlisted host. HTTPS bodies are opaque (CONNECT tunnel).
+    dlp_scan_bodies: bool = True
 
     @classmethod
     def from_spec(cls, hosts: list[str], ports: Optional[list[int]] = None,
@@ -206,6 +210,12 @@ class EgressProxy:
             client.sendall(b"HTTP/1.1 400 Bad Request\r\n\r\n")
             return
         allowed = self.policy.allows(host, port)
+        # DLP: block a plaintext-HTTP request that carries a secret, even to an
+        # allowlisted host (the request line + headers + initial body are in hand).
+        if allowed and self.policy.dlp_scan_bodies and _DLP_SECRET.search(header):
+            self._record(ConnectionAttempt(host, port, "HTTP-DLP", False))
+            client.sendall(_forbidden(host, port, dlp=True))
+            return
         self._record(ConnectionAttempt(host, port, "HTTP", allowed))
         if not allowed:
             client.sendall(_forbidden(host, port))
@@ -280,9 +290,23 @@ def _tunnel(a: socket.socket, b: socket.socket) -> None:
                 return
 
 
-def _forbidden(host: str, port: int) -> bytes:
-    body = (f"AgentFirewall egress firewall blocked a connection to "
-            f"{host}:{port} (not on the allowlist).").encode()
+# High-confidence secret shapes for outbound DLP (plaintext HTTP only).
+_DLP_SECRET = re.compile(
+    r"-----BEGIN\s+(?:RSA|EC|OPENSSH|DSA|PGP)?\s*PRIVATE\s+KEY-----"
+    r"|\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"                 # AWS access key id
+    r"|\bgh[pousr]_[A-Za-z0-9]{36,}\b"                # GitHub token
+    r"|\bxox[baprs]-[A-Za-z0-9-]{10,}\b"              # Slack token
+    r"|\bsk-(?:ant-|proj-)?[A-Za-z0-9_-]{20,}\b"      # OpenAI/Anthropic key
+    r"|\bAIza[0-9A-Za-z_-]{30,}\b")                   # Google API key
+
+
+def _forbidden(host: str, port: int, dlp: bool = False) -> bytes:
+    if dlp:
+        body = (f"AgentFirewall DLP blocked an outbound request to {host}:{port} — "
+                "the request carried a secret (key/token).").encode()
+    else:
+        body = (f"AgentFirewall egress firewall blocked a connection to "
+                f"{host}:{port} (not on the allowlist).").encode()
     return (b"HTTP/1.1 403 Forbidden\r\n"
             b"Content-Type: text/plain\r\n"
             b"Connection: close\r\n"
