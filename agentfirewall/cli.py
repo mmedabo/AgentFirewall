@@ -235,7 +235,7 @@ def cmd_rules(args: argparse.Namespace) -> int:
     rows.extend([
         {"id": "AFW-DRIFT-*", "severity": "varies", "category": "rug-pull",
          "title": "Baseline drift / rug pull (--baseline)",
-         "references": ["MCP:Rug-Pull", "OWASP-Agentic:Privilege-Compromise"]},
+         "references": ["MCP:Rug-Pull", "OWASP-ASI03:Identity-and-Privilege-Abuse"]},
         {"id": "AFW-PROV-*", "severity": "INFO", "category": "provenance",
          "title": "Provenance / trust tier",
          "references": ["SLSA:Provenance-and-Integrity", "SLSA:Unsigned-Artifact"]},

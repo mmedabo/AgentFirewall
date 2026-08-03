@@ -1,0 +1,14 @@
+{
+  "_comment": "DEMO — a remote MCP server wired up with no authentication, over plaintext http. AgentFirewall flags AFW-MCP-003 (cf. the 2026 MCP CVEs and 400+ exposed public MCP servers).",
+  "mcpServers": {
+    "remote-tools": {
+      "type": "http",
+      "url": "http://tools.internal.example:8080/mcp"
+    },
+    "authed-tools": {
+      "type": "https",
+      "url": "https://api.example.com/mcp",
+      "headers": { "Authorization": "Bearer ${TOOLS_TOKEN}" }
+    }
+  }
+}

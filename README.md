@@ -53,6 +53,8 @@ a clear, auditable report of exactly why.
 | 🚫 **Known-bad IoCs** | artifact name, file hash, contacted domain or signer identity on a threat-intel feed |
 | 🎢 **Excessive agency** *(deployed agents)* | a chatbot that runs arbitrary code / has no topic scope (the "McDonald's bot writes Python" case) |
 | 🎟️ **Broken authorization** *(deployed agents)* | the expensive agent action runs *before* the quota/authz check (TOCTOU), or the limit is only enforced client-side (the Bolt.new refresh exploit) |
+| 🔌 **Unauthenticated MCP** | a remote MCP server wired up with no auth / plaintext `http://` (the 2026 MCP-CVE class) |
+| 🖼️ **Auto-fetch exfiltration** | reference-style markdown/`<img>` that auto-loads an external URL carrying data (the EchoLeak zero-click channel) |
 
 Every detection is mapped to an industry framework — **OWASP Top 10 for LLM Apps**,
 **OWASP Top 10 for Agentic Apps**, **MITRE ATLAS**, **MCP threat research** and

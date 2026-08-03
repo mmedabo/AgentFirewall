@@ -6,6 +6,23 @@ All notable changes to AgentFirewall are documented here. This project follows
 
 ## [Unreleased]
 
+## [1.1.0] — Research-driven detections
+
+First batch of adaptations from the daily research scout (2026-08-03 digest):
+
+- **Official OWASP Agentic ASI01–ASI10 IDs.** Framework references now use the
+  finalized identifiers from the OWASP Top 10 for Agentic Applications 2026 (e.g.
+  `OWASP-ASI06:Memory-and-Context-Poisoning`); code-execution findings also cite
+  `OWASP-ASI05`. Back-compat aliases retained.
+- **`AFW-MCP-003` — remote MCP server without authentication.** Flags MCP clients
+  configured to reach a remote server (http/sse) with no auth header/token, and
+  plaintext `http://` endpoints — the class behind the 2026 MCP CVEs and the 400+
+  publicly-exposed, unauthenticated MCP servers.
+- **`AFW-NET-007` — auto-fetched image/link with a dynamic URL.** Detects the
+  zero-click exfiltration channel used by EchoLeak (CVE-2025-32711): reference-style
+  markdown images / `<img>` tags that auto-load an external URL carrying data.
+- New `examples/insecure-mcp` fixture.
+
 ## [1.0.0] — First stable release
 
 First stable, feature-complete release. AgentFirewall now spans the full agent
@@ -114,7 +131,8 @@ package to Production/Stable, and is the first tagged/published version.
 - `scan` / `verify` / `install` / `watch` / `rules`; ALLOW/WARN/BLOCK policy;
   text / JSON / SARIF output. MIT licensed, zero required dependencies.
 
-[Unreleased]: https://github.com/mmedabo/agentfirewall/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/mmedabo/agentfirewall/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v1.1.0
 [1.0.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v1.0.0
 [0.9.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.9.0
 [0.8.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.8.0

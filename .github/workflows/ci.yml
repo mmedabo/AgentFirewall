@@ -25,7 +25,7 @@ jobs:
       - name: Self-check (firewall blocks the malicious examples)
         run: |
           python -m agentfirewall verify examples/safe-skill
-          for bad in examples/malicious-skill examples/poisoned-mcp examples/vulnerable-agent-app; do
+          for bad in examples/malicious-skill examples/poisoned-mcp examples/vulnerable-agent-app examples/insecure-mcp; do
             if python -m agentfirewall verify "$bad"; then
               echo "::error::$bad was not blocked"; exit 1
             else
