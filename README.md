@@ -70,11 +70,15 @@ full mapping and [`docs/ROADMAP.md`](docs/ROADMAP.md) for where this is going.
 ## Install
 
 ```bash
-pip install agentfirewall           # from PyPI (once published)
+pip install AIAgentFirewall        # from PyPI (once published)
 # or, from source:
 git clone https://github.com/mmedabo/agentfirewall
 cd agentfirewall && pip install -e .
 ```
+
+> **Names:** the PyPI package is **`AIAgentFirewall`**, the import module is
+> **`agentfirewall`**, and the CLI is **`afw`** — e.g. `pip install AIAgentFirewall`
+> then `import agentfirewall` or run `afw scan …`.
 
 This installs the `afw` command (aliased as `agentfirewall`). You can also run it
 without installing: `python -m agentfirewall …`.
@@ -284,7 +288,7 @@ afw scan ./skill --policy policy.yaml
 ```
 
 Policy files are JSON or YAML (YAML works without any dependency for the simple
-schema above; `pip install agentfirewall[yaml]` for full YAML).
+schema above; `pip install AIAgentFirewall[yaml]` for full YAML).
 
 ---
 
