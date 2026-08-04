@@ -70,7 +70,7 @@ full mapping and [`docs/ROADMAP.md`](docs/ROADMAP.md) for where this is going.
 ## Install
 
 ```bash
-pip install AIAgentFirewall        # from PyPI (once published)
+pip install AIAgentFirewall        # from PyPI
 # or, from source:
 git clone https://github.com/mmedabo/agentfirewall
 cd agentfirewall && pip install -e .
@@ -418,7 +418,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: mmedabo/agentfirewall@v1.0.0
+      - uses: mmedabo/agentfirewall@v1.3.1
         with:
           path: ./skills
           args: --strict          # optional: block on MEDIUM+ ; or --format sarif
@@ -434,9 +434,9 @@ layers, so you can stop at the depth you need.
 
 | Layer | Page | For whom |
 |---|---|---|
-| **01 · Overview** | [`docs/index.html`](docs/index.html) | Plain-English intro — what this is and why it matters, no jargon |
-| **02 · Features** | [`docs/features.html`](docs/features.html) | Every capability: why it's needed, use cases, honest pros **and cons** |
-| **03 · Reference** | [`docs/reference.html`](docs/reference.html) | Architecture, all commands/flags, the full detection catalogue, framework glossary |
+| **01 · Overview** | [Start here](https://mmedabo.github.io/AgentFirewall/) | Plain-English intro — what this is and why it matters, no jargon |
+| **02 · Features** | [Feature guide](https://mmedabo.github.io/AgentFirewall/features.html) | Every capability: why it's needed, use cases, honest pros **and cons** |
+| **03 · Reference** | [Full reference](https://mmedabo.github.io/AgentFirewall/reference.html) | Architecture, all commands/flags, the full detection catalogue, framework glossary |
 
 And the Markdown references:
 
