@@ -434,9 +434,9 @@ layers, so you can stop at the depth you need.
 
 | Layer | Page | For whom |
 |---|---|---|
-| **01 · Overview** | [Start here](https://mmedabo.github.io/AgentFirewall/) | Plain-English intro — what this is and why it matters, no jargon |
-| **02 · Features** | [Feature guide](https://mmedabo.github.io/AgentFirewall/features.html) | Every capability: why it's needed, use cases, honest pros **and cons** |
-| **03 · Reference** | [Full reference](https://mmedabo.github.io/AgentFirewall/reference.html) | Architecture, all commands/flags, the full detection catalogue, framework glossary |
+| **01 · Overview** | [Start here](https://mmedabo.github.io/AgentFirewall/docs/) | Plain-English intro — what this is and why it matters, no jargon |
+| **02 · Features** | [Feature guide](https://mmedabo.github.io/AgentFirewall/docs/features.html) | Every capability: why it's needed, use cases, honest pros **and cons** |
+| **03 · Reference** | [Full reference](https://mmedabo.github.io/AgentFirewall/docs/reference.html) | Architecture, all commands/flags, the full detection catalogue, framework glossary |
 
 And the Markdown references:
 
