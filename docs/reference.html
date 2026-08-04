@@ -3,15 +3,28 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <title>AIAgentFirewall — Reference</title>
 <style>
+/* Self-hosted so the site makes zero third-party requests.
+   Inter & Space Grotesk — SIL Open Font License 1.1, latin subset. */
+@font-face{
+  font-family:'Inter';font-style:normal;font-weight:400 700;font-display:swap;
+  src:url('fonts/inter-var.woff2') format('woff2');
+}
+@font-face{
+  font-family:'Space Grotesk';font-style:normal;font-weight:500 700;font-display:swap;
+  src:url('fonts/space-grotesk-var.woff2') format('woff2');
+}
+
   :root{
     --bg:#F4F7F7;--bg-2:#FFFFFF;--panel:#FBFDFD;--ink:#14202A;--ink-soft:#33424E;--muted:#5C6B76;
     --line:#DBE4E6;--line-strong:#C4D1D3;--accent:#0C8A92;--accent-ink:#075056;--accent-tint:#E2F1F1;
     --allow:#1E8A4C;--warn:#A9741A;--block:#BE3A32;--high:#C15A1E;
     --allow-tint:#E7F3EB;--warn-tint:#F6EEDD;--block-tint:#F7E9E8;--high-tint:#F6EADF;
     --shadow:0 1px 2px rgba(20,32,42,.06),0 10px 30px -14px rgba(20,32,42,.2);--grid:rgba(12,138,146,.09);
-    --font-sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-sans:'Inter',system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-display:'Space Grotesk','Inter',system-ui,sans-serif;
     --font-mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
     --maxw:1140px;
   }
@@ -35,7 +48,7 @@
 
   .topbar{position:sticky;top:0;z-index:50;backdrop-filter:saturate(140%) blur(10px);background:color-mix(in srgb,var(--bg) 82%,transparent);border-bottom:1px solid var(--line)}
   .topbar .wrap{display:flex;align-items:center;gap:16px;min-height:60px}
-  .brand{display:flex;align-items:center;gap:10px;font-weight:750;letter-spacing:-.01em;white-space:nowrap}
+  .brand{font-family:var(--font-display);display:flex;align-items:center;gap:10px;font-weight:750;letter-spacing:-.01em;white-space:nowrap}
   .brand .mark{width:22px;height:22px;flex:none;border-radius:6px;background:linear-gradient(150deg,var(--accent),color-mix(in srgb,var(--accent) 55%,var(--ink)));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 50%,transparent)}
   .layers{margin-left:auto;display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg-2)}
   .layers a{padding:8px 13px;font-size:.8rem;font-weight:650;color:var(--muted);text-decoration:none;display:flex;gap:8px;align-items:center;border-right:1px solid var(--line);transition:color .15s,background .15s}
@@ -59,10 +72,10 @@
   .doc{min-width:0}
   .doc-hd{margin-bottom:14px}
   .kicker{font-family:var(--font-mono);font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);font-weight:650}
-  .doc-hd h1{font-size:clamp(2rem,4vw,2.7rem);letter-spacing:-.025em;font-weight:800;margin:.3em 0 .25em;text-wrap:balance}
+  .doc-hd h1{font-family:var(--font-display);font-size:clamp(2rem,4vw,2.7rem);letter-spacing:-.025em;font-weight:800;margin:.3em 0 .25em;text-wrap:balance}
   .doc-hd p{color:var(--muted);margin:0;max-width:64ch;font-size:1.03rem}
 
-  h2.sec{font-size:1.5rem;letter-spacing:-.02em;font-weight:770;margin:52px 0 6px;padding-top:14px;border-top:1px solid var(--line);scroll-margin-top:76px}
+  h2.sec{font-family:var(--font-display);font-size:1.5rem;letter-spacing:-.02em;font-weight:770;margin:52px 0 6px;padding-top:14px;border-top:1px solid var(--line);scroll-margin-top:76px}
   h2.sec:first-of-type{border-top:0}
   .lead{color:var(--ink-soft);margin:0 0 18px;max-width:70ch}
   h3.sub{font-size:1.06rem;font-weight:720;margin:26px 0 8px}
