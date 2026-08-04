@@ -6,6 +6,14 @@ All notable changes to AgentFirewall are documented here. This project follows
 
 ## [Unreleased]
 
+## [1.3.1] — Packaging: PyPI name
+
+First release published to PyPI under the distribution name **`AIAgentFirewall`**
+(the `agentfirewall` name was already claimed on PyPI by an unrelated project). The
+import module (`agentfirewall`) and the CLI (`afw` / `agentfirewall`) are unchanged;
+this is a packaging-only bump so the wheel/sdist metadata and the release tag carry
+the new distribution name. Install with `pip install AIAgentFirewall`.
+
 ## [1.3.0] — Inter-agent security + outbound DLP
 
 Third research batch — the lower-priority items, now grounded in fresh 2026 research.
@@ -163,7 +171,8 @@ package to Production/Stable, and is the first tagged/published version.
 - `scan` / `verify` / `install` / `watch` / `rules`; ALLOW/WARN/BLOCK policy;
   text / JSON / SARIF output. MIT licensed, zero required dependencies.
 
-[Unreleased]: https://github.com/mmedabo/agentfirewall/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/mmedabo/agentfirewall/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/mmedabo/agentfirewall/releases/tag/v1.3.1
 [1.3.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v1.3.0
 [1.2.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v1.2.0
 [1.1.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v1.1.0
