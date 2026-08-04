@@ -2,6 +2,8 @@
 
 ## The website (three layers)
 
+**Live at → https://mmedabo.github.io/AgentFirewall/**
+
 The docs site is plain, self-contained HTML — no build step, no dependencies, no
 external assets. Open `index.html` in a browser, or serve the folder:
 
@@ -23,8 +25,11 @@ depths is one click.
 ### Publishing on GitHub Pages
 
 Settings → Pages → Source: *Deploy from a branch* → branch `main`, folder
-`/docs`. The site is then served at
-`https://<owner>.github.io/<repo>/`.
+`/docs`. The site is then served at `https://<owner>.github.io/<repo>/`.
+
+The `.nojekyll` file in this folder disables Jekyll processing, so every file is
+served exactly as committed. Keep it — without it, Jekyll rewrites `.md` files to
+`.html` and ignores anything whose name starts with an underscore.
 
 ### Keeping the catalogue accurate
 
