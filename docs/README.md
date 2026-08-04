@@ -2,7 +2,10 @@
 
 ## The website (three layers)
 
-**Live at → https://mmedabo.github.io/AgentFirewall/**
+**Live at → https://mmedabo.github.io/AgentFirewall/docs/**
+
+(The bare `…/AgentFirewall/` URL also works — a redirect at the repository root
+forwards to this folder. See *Publishing on GitHub Pages* below.)
 
 The docs site is plain, self-contained HTML — no build step, no dependencies, no
 external assets. Open `index.html` in a browser, or serve the folder:
@@ -24,8 +27,14 @@ depths is one click.
 
 ### Publishing on GitHub Pages
 
-Settings → Pages → Source: *Deploy from a branch* → branch `main`, folder
-`/docs`. The site is then served at `https://<owner>.github.io/<repo>/`.
+This repository publishes from **branch `main`, folder `/ (root)`**, so the site
+is served at `https://<owner>.github.io/<repo>/docs/`. A redirect at
+`index.html` in the repository root forwards the bare `/<repo>/` URL here, and
+a `.nojekyll` at the root stops Jekyll rendering `README.md` as the homepage.
+
+To get shorter URLs instead, change the folder to `/docs` under
+Settings → Pages. The site then serves straight from `https://<owner>.github.io/<repo>/`,
+and the two root files become inert (they are simply not published).
 
 The `.nojekyll` file in this folder disables Jekyll processing, so every file is
 served exactly as committed. Keep it — without it, Jekyll rewrites `.md` files to
