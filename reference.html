@@ -5,201 +5,382 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <title>AIAgentFirewall — Reference</title>
+<meta name="description" content="Architecture, every command and flag, the full 59-detection catalogue and framework mappings.">
 <style>
 /* Self-hosted so the site makes zero third-party requests.
    Inter & Space Grotesk — SIL Open Font License 1.1, latin subset. */
-@font-face{
-  font-family:'Inter';font-style:normal;font-weight:400 700;font-display:swap;
-  src:url('fonts/inter-var.woff2') format('woff2');
+@font-face{font-family:'Inter';font-style:normal;font-weight:400 700;font-display:swap;src:url('fonts/inter-var.woff2') format('woff2')}
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:500 700;font-display:swap;src:url('fonts/space-grotesk-var.woff2') format('woff2')}
+
+:root{
+  --bg:#0a0a0c;--bg-2:#14141a;--surface:#101015;--line:#1e1e28;--line-hot:#2a2a38;
+  --cyan:#00f3ff;--violet:#7000ff;
+  --allow:#00ffa3;--warn:#ffc400;--block:#ff2e63;
+  --text:#eceef4;--text-dim:#9aa0b4;--text-mute:#5f6478;
+  --glow-cyan:0 0 24px rgba(0,243,255,.35);
+  --font-display:'Space Grotesk',ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --font-body:'Inter',ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --font-mono:ui-monospace,'JetBrains Mono','SF Mono',Menlo,Consolas,monospace;
+  --maxw:1200px;--ease:cubic-bezier(.22,1,.36,1);
 }
-@font-face{
-  font-family:'Space Grotesk';font-style:normal;font-weight:500 700;font-display:swap;
-  src:url('fonts/space-grotesk-var.woff2') format('woff2');
-}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);
+     line-height:1.62;font-size:16.5px;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+canvas{display:block}
+code{font-family:var(--font-mono)}
+::selection{background:rgba(0,243,255,.28);color:#fff}
 
-  :root{
-    --bg:#F4F7F7;--bg-2:#FFFFFF;--panel:#FBFDFD;--ink:#14202A;--ink-soft:#33424E;--muted:#5C6B76;
-    --line:#DBE4E6;--line-strong:#C4D1D3;--accent:#0C8A92;--accent-ink:#075056;--accent-tint:#E2F1F1;
-    --allow:#1E8A4C;--warn:#A9741A;--block:#BE3A32;--high:#C15A1E;
-    --allow-tint:#E7F3EB;--warn-tint:#F6EEDD;--block-tint:#F7E9E8;--high-tint:#F6EADF;
-    --shadow:0 1px 2px rgba(20,32,42,.06),0 10px 30px -14px rgba(20,32,42,.2);--grid:rgba(12,138,146,.09);
-    --font-sans:'Inter',system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --font-display:'Space Grotesk','Inter',system-ui,sans-serif;
-    --font-mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
-    --maxw:1140px;
-  }
-  @media (prefers-color-scheme:dark){:root{
-    --bg:#0A0F16;--bg-2:#121B24;--panel:#0F1720;--ink:#E7EEF3;--ink-soft:#C2CDD6;--muted:#8B99A6;
-    --line:#233039;--line-strong:#31414C;--accent:#34C7CD;--accent-ink:#8EE6E9;--accent-tint:#0F2429;
-    --allow:#48BB6B;--warn:#D3A03C;--block:#E56A61;--high:#E0873F;
-    --allow-tint:#112017;--warn-tint:#211B0F;--block-tint:#251615;--high-tint:#231708;
-    --shadow:0 1px 0 rgba(255,255,255,.02),0 20px 46px -22px rgba(0,0,0,.72);--grid:rgba(52,199,205,.08);
-  }}
-  :root[data-theme="light"]{--bg:#F4F7F7;--bg-2:#FFFFFF;--panel:#FBFDFD;--ink:#14202A;--ink-soft:#33424E;--muted:#5C6B76;--line:#DBE4E6;--line-strong:#C4D1D3;--accent:#0C8A92;--accent-ink:#075056;--accent-tint:#E2F1F1;--allow:#1E8A4C;--warn:#A9741A;--block:#BE3A32;--high:#C15A1E;--allow-tint:#E7F3EB;--warn-tint:#F6EEDD;--block-tint:#F7E9E8;--high-tint:#F6EADF;--shadow:0 1px 2px rgba(20,32,42,.06),0 10px 30px -14px rgba(20,32,42,.2);--grid:rgba(12,138,146,.09);}
-  :root[data-theme="dark"]{--bg:#0A0F16;--bg-2:#121B24;--panel:#0F1720;--ink:#E7EEF3;--ink-soft:#C2CDD6;--muted:#8B99A6;--line:#233039;--line-strong:#31414C;--accent:#34C7CD;--accent-ink:#8EE6E9;--accent-tint:#0F2429;--allow:#48BB6B;--warn:#D3A03C;--block:#E56A61;--high:#E0873F;--allow-tint:#112017;--warn-tint:#211B0F;--block-tint:#251615;--high-tint:#231708;--shadow:0 1px 0 rgba(255,255,255,.02),0 20px 46px -22px rgba(0,0,0,.72);--grid:rgba(52,199,205,.08);}
+/* ambient */
+#bgfx{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.6}
+.vignette{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(85% 50% at 50% 0%,rgba(112,0,255,.14),transparent 60%),
+             radial-gradient(70% 45% at 88% 18%,rgba(0,243,255,.08),transparent 58%),
+             radial-gradient(120% 90% at 50% 112%,rgba(0,0,0,.86),transparent 55%)}
+.scanlines{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:.3;
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.026) 0 1px,transparent 1px 3px)}
+.wrap{width:100%;max-width:var(--maxw);margin:0 auto;padding:0 26px;position:relative;z-index:5}
 
-  *{box-sizing:border-box}
-  html{scroll-behavior:smooth}
-  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
-  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-sans);line-height:1.62;font-size:16px;-webkit-font-smoothing:antialiased}
-  a{color:inherit}
-  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
-  code{font-family:var(--font-mono)}
+/* scroll progress */
+.progress{position:fixed;top:0;left:0;height:2px;z-index:120;width:0%;
+  background:linear-gradient(90deg,var(--cyan),var(--violet));box-shadow:0 0 12px rgba(0,243,255,.6)}
 
-  .topbar{position:sticky;top:0;z-index:50;backdrop-filter:saturate(140%) blur(10px);background:color-mix(in srgb,var(--bg) 82%,transparent);border-bottom:1px solid var(--line)}
-  .topbar .wrap{display:flex;align-items:center;gap:16px;min-height:60px}
-  .brand{font-family:var(--font-display);display:flex;align-items:center;gap:10px;font-weight:750;letter-spacing:-.01em;white-space:nowrap}
-  .brand .mark{width:22px;height:22px;flex:none;border-radius:6px;background:linear-gradient(150deg,var(--accent),color-mix(in srgb,var(--accent) 55%,var(--ink)));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 50%,transparent)}
-  .layers{margin-left:auto;display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg-2)}
-  .layers a{padding:8px 13px;font-size:.8rem;font-weight:650;color:var(--muted);text-decoration:none;display:flex;gap:8px;align-items:center;border-right:1px solid var(--line);transition:color .15s,background .15s}
-  .layers a:last-child{border-right:0}
-  .layers a:hover{color:var(--ink)}
-  .layers a[aria-current="page"]{background:var(--accent-tint);color:var(--accent-ink)}
-  .layers a .ln{font-family:var(--font-mono);opacity:.65;font-size:.74rem}
-  .layers a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-  @media (max-width:680px){.layers a .lt{display:none}.layers a{padding:8px 11px}}
+/* nav */
+.nav{position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:100;
+  width:calc(100% - 36px);max-width:var(--maxw);display:flex;align-items:center;gap:18px;
+  padding:11px 14px 11px 18px;border-radius:16px;border:1px solid transparent;background:transparent;
+  transition:background .45s var(--ease),border-color .45s var(--ease),box-shadow .45s var(--ease),top .45s var(--ease),padding .45s var(--ease)}
+.nav.stuck{top:12px;padding:9px 12px 9px 16px;background:rgba(10,10,12,.74);
+  backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%);
+  border-color:var(--line);box-shadow:0 10px 40px -18px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.04)}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:700;letter-spacing:-.02em;font-size:.98rem;white-space:nowrap}
+.logo .glyph{width:24px;height:24px;border-radius:7px;flex:none;position:relative;
+  background:linear-gradient(140deg,var(--cyan),var(--violet));box-shadow:var(--glow-cyan)}
+.logo .glyph::after{content:"";position:absolute;inset:5px;border-radius:3px;background:var(--bg)}
+.layers{margin-left:auto;display:inline-flex;border:1px solid var(--line);border-radius:11px;overflow:hidden;background:rgba(20,20,26,.6)}
+.layers a{padding:8px 13px;font-size:.79rem;font-weight:600;color:var(--text-mute);display:flex;gap:8px;align-items:center;
+  border-right:1px solid var(--line);white-space:nowrap;transition:color .25s var(--ease),background .25s var(--ease)}
+.layers a:last-child{border-right:0}
+.layers a:hover{color:var(--text);background:rgba(255,255,255,.03)}
+.layers a[aria-current="page"]{color:var(--cyan);background:rgba(0,243,255,.09)}
+.layers a .ln{font-family:var(--font-mono);opacity:.6;font-size:.72rem}
+.layers a:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
+@media (max-width:640px){.layers a .lt{display:none}.layers a{padding:8px 11px}}
 
-  /* layout: sticky side nav + content */
-  .shell{display:grid;grid-template-columns:220px 1fr;gap:40px;padding:40px 0 20px}
-  @media (max-width:900px){.shell{grid-template-columns:1fr;gap:8px}}
-  .sidenav{position:sticky;top:80px;align-self:start;height:max-content}
-  @media (max-width:900px){.sidenav{position:static;border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--bg-2);margin-bottom:14px}}
-  .sidenav .lbl{font-family:var(--font-mono);font-size:.68rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:650;margin:0 0 10px;padding-left:11px}
-  .sidenav a{display:block;text-decoration:none;color:var(--muted);font-size:.88rem;font-weight:550;padding:7px 11px;border-radius:8px;border-left:2px solid transparent;transition:color .14s,background .14s}
-  .sidenav a:hover{color:var(--ink);background:var(--accent-tint)}
-  .sidenav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* page head */
+.phead{padding:150px 0 40px;position:relative}
+.sec-tag{font-family:var(--font-mono);font-size:.71rem;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--violet);font-weight:650;display:inline-flex;align-items:center;gap:11px}
+.sec-tag::before{content:"";width:28px;height:1px;background:linear-gradient(90deg,var(--violet),transparent)}
+.phead h1{font-family:var(--font-display);font-size:clamp(2.4rem,6vw,4.2rem);line-height:.98;
+  letter-spacing:-.04em;font-weight:700;margin:.32em 0 .3em;text-wrap:balance;max-width:18ch}
+.phead h1 .em{background:linear-gradient(180deg,#fff 10%,var(--cyan) 60%,var(--violet) 130%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 22px rgba(0,243,255,.25))}
+.phead .lede{color:var(--text-dim);font-size:clamp(1rem,2vw,1.16rem);max-width:62ch;margin:0}
+.phead .lede b{color:var(--text);font-weight:600}
 
-  .doc{min-width:0}
-  .doc-hd{margin-bottom:14px}
-  .kicker{font-family:var(--font-mono);font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);font-weight:650}
-  .doc-hd h1{font-family:var(--font-display);font-size:clamp(2rem,4vw,2.7rem);letter-spacing:-.025em;font-weight:800;margin:.3em 0 .25em;text-wrap:balance}
-  .doc-hd p{color:var(--muted);margin:0;max-width:64ch;font-size:1.03rem}
+/* legend chips */
+.legend{display:flex;gap:9px;flex-wrap:wrap;margin-top:26px}
+.lg{font-family:var(--font-mono);font-size:.72rem;font-weight:600;letter-spacing:.05em;
+  padding:6px 12px;border-radius:8px;border:1px solid;display:inline-flex;align-items:center;gap:8px}
+.lg::before{content:"";width:6px;height:6px;border-radius:50%}
+.lg.p{color:var(--allow);border-color:rgba(0,255,163,.3);background:rgba(0,255,163,.06)}
+.lg.p::before{background:var(--allow);box-shadow:0 0 8px var(--allow)}
+.lg.c{color:var(--block);border-color:rgba(255,46,99,.3);background:rgba(255,46,99,.06)}
+.lg.c::before{background:var(--block);box-shadow:0 0 8px var(--block)}
+.lg.u{color:var(--cyan);border-color:rgba(0,243,255,.3);background:rgba(0,243,255,.06)}
+.lg.u::before{background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
 
-  h2.sec{font-family:var(--font-display);font-size:1.5rem;letter-spacing:-.02em;font-weight:770;margin:52px 0 6px;padding-top:14px;border-top:1px solid var(--line);scroll-margin-top:76px}
-  h2.sec:first-of-type{border-top:0}
-  .lead{color:var(--ink-soft);margin:0 0 18px;max-width:70ch}
-  h3.sub{font-size:1.06rem;font-weight:720;margin:26px 0 8px}
-  p{color:var(--ink-soft)}
+/* sections */
+section{position:relative;z-index:5;padding:64px 0}
+.tier{border-top:1px solid var(--line)}
+.tier-head{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:4px}
+.tier-num{font-family:var(--font-mono);font-size:.75rem;color:var(--cyan);font-weight:700;letter-spacing:.14em}
+.tier-head h2,.sec-head h2{font-family:var(--font-display);font-weight:700;letter-spacing:-.03em;
+  font-size:clamp(1.7rem,3.6vw,2.4rem);line-height:1.04;margin:.3em 0 .25em;text-wrap:balance;max-width:20ch}
+.tier-head h2{margin:0}
+.tier-sub,.sec-head p{color:var(--text-dim);margin:6px 0 0;font-size:1.02rem;max-width:66ch}
 
-  .panel{background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow)}
+.rv{opacity:0;transform:translateY(24px);transition:opacity .75s var(--ease),transform .75s var(--ease)}
+.rv.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}}
 
-  /* pipeline */
-  .pipe-scroll{overflow-x:auto;padding-bottom:6px}
-  .pipe{display:flex;align-items:stretch;min-width:720px}
-  .node{flex:1;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
-  .node .k{font-family:var(--font-mono);font-size:.7rem;color:var(--accent-ink);font-weight:650}
-  .node .t{font-weight:700;margin-top:4px;font-size:.94rem}
-  .node .d{color:var(--muted);font-size:.78rem;margin-top:2px}
-  .arrow{display:flex;align-items:center;justify-content:center;width:30px;color:var(--line-strong);flex:none}
+/* pipeline */
+.pipe-scroll{overflow-x:auto;margin-top:32px;padding-bottom:8px}
+.pipe{display:flex;align-items:stretch;min-width:780px}
+.node{flex:1;background:linear-gradient(165deg,rgba(255,255,255,.04),rgba(255,255,255,.008));
+  border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.node .k{font-family:var(--font-mono);font-size:.7rem;color:var(--cyan);font-weight:650;letter-spacing:.06em}
+.node .t{font-family:var(--font-display);font-weight:650;margin-top:5px;font-size:1rem}
+.node .d{color:var(--text-mute);font-size:.81rem;margin-top:3px}
+.arrow{display:flex;align-items:center;justify-content:center;width:34px;color:var(--line-hot);flex:none;font-size:1.1rem}
 
-  /* generic table */
-  .tbl-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin-top:10px}
-  table{border-collapse:collapse;width:100%;min-width:520px;font-size:.9rem}
-  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
-  th{background:var(--panel);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;font-family:var(--font-mono)}
-  tr:last-child td{border-bottom:0}
-  td code{font-size:.82rem;color:var(--accent-ink)}
-  td .desc{color:var(--muted)}
+/* direction cards */
+.dirs{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:26px}
+@media (max-width:760px){.dirs{grid-template-columns:1fr}}
+.dir{border:1px solid var(--line);border-radius:15px;padding:22px 24px;
+  background:linear-gradient(165deg,rgba(255,255,255,.035),rgba(255,255,255,.006))}
+.dir h3{font-family:var(--font-display);margin:0 0 7px;font-size:1.08rem;display:flex;align-items:center;gap:10px;font-weight:660}
+.dir h3 .tag{font-family:var(--font-mono);font-size:.65rem;padding:3px 8px;border-radius:6px;
+  background:rgba(0,243,255,.1);color:var(--cyan);font-weight:700;letter-spacing:.08em;border:1px solid rgba(0,243,255,.22)}
+.dir p{margin:0;color:var(--text-dim);font-size:.94rem}
 
-  /* code block */
-  pre.code{margin:12px 0 0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;overflow-x:auto;font-family:var(--font-mono);font-size:.83rem;line-height:1.65;color:var(--ink-soft)}
-  pre.code .c{color:var(--muted)}
-  pre.code .k{color:var(--accent-ink);font-weight:600}
-  .inline{font-family:var(--font-mono);font-size:.85em;background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--ink-soft)}
+/* feature cards (bento) */
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:30px}
+@media (max-width:880px){.cards{grid-template-columns:1fr}}
+.card{position:relative;isolation:isolate;overflow:hidden;
+  background:linear-gradient(165deg,rgba(255,255,255,.04),rgba(255,255,255,.007));
+  border:1px solid var(--line);border-radius:18px;padding:24px;
+  display:flex;flex-direction:column;gap:15px;
+  transition:border-color .4s var(--ease),transform .4s var(--ease)}
+.card::before{content:"";position:absolute;inset:-1px;border-radius:inherit;z-index:-1;opacity:0;
+  background:radial-gradient(440px circle at var(--mx,50%) var(--my,50%),rgba(0,243,255,.15),transparent 44%);
+  transition:opacity .4s var(--ease)}
+.card:hover{border-color:var(--line-hot);transform:translateY(-3px)}
+.card:hover::before{opacity:1}
+.card-top{display:flex;flex-direction:column;gap:10px}
+.card h3{font-family:var(--font-display);margin:0;font-size:1.2rem;letter-spacing:-.02em;font-weight:680;line-height:1.18}
+.cmd{font-family:var(--font-mono);font-size:.77rem;color:var(--text-dim);
+  background:rgba(0,0,0,.4);border:1px solid var(--line);border-radius:8px;padding:7px 10px;
+  align-self:flex-start;max-width:100%;overflow-x:auto;white-space:nowrap}
+.cmd b{color:var(--cyan);font-weight:700}
+.why{margin:0;color:var(--text-dim);font-size:.94rem}
+.why b{color:var(--text);font-weight:640}
+.block-label{font-family:var(--font-mono);font-size:.67rem;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--text-mute);font-weight:650;margin-bottom:8px;display:block}
+.uses{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:7px}
+.uses li{position:relative;padding-left:19px;font-size:.9rem;color:var(--text-dim)}
+.uses li::before{content:"";position:absolute;left:2px;top:.6em;width:6px;height:6px;border-radius:1px;
+  background:var(--cyan);transform:rotate(45deg);box-shadow:0 0 7px rgba(0,243,255,.7)}
+.uses code{font-size:.85em;color:var(--cyan)}
 
-  /* trust tiers */
-  .tiers{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:12px}
-  @media (max-width:760px){.tiers{grid-template-columns:1fr 1fr}}
-  .tierc{border:1px solid var(--line);border-radius:12px;padding:14px 15px;background:var(--bg-2)}
-  .tierc .n{font-family:var(--font-mono);font-weight:700;font-size:.82rem;color:var(--accent-ink);letter-spacing:.04em}
-  .tierc p{margin:6px 0 0;font-size:.85rem;color:var(--muted)}
+.pc{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:540px){.pc{grid-template-columns:1fr}}
+.pcbox{border:1px solid var(--line);border-radius:12px;padding:13px 14px;background:rgba(0,0,0,.28)}
+.pcbox.pro{border-color:rgba(0,255,163,.22)}
+.pcbox.con{border-color:rgba(255,46,99,.2)}
+.pcbox h4{margin:0 0 9px;font-size:.69rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;font-family:var(--font-mono)}
+.pro h4{color:var(--allow)}
+.con h4{color:var(--block)}
+.pcbox ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.pcbox li{position:relative;padding-left:18px;font-size:.86rem;color:var(--text-dim);line-height:1.5}
+.pro li::before{content:"+";position:absolute;left:1px;top:-1px;color:var(--allow);font-weight:800;font-family:var(--font-mono)}
+.con li::before{content:"–";position:absolute;left:1px;top:-1px;color:var(--block);font-weight:800;font-family:var(--font-mono)}
+.pcbox code{font-size:.85em;color:var(--text-dim)}
 
-  /* rule catalogue */
-  .legend{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 20px}
-  .sev{font-family:var(--font-mono);font-size:.66rem;font-weight:700;letter-spacing:.05em;padding:3px 8px;border-radius:5px;border:1px solid;white-space:nowrap}
-  .sev.c{color:var(--block);background:var(--block-tint);border-color:color-mix(in srgb,var(--block) 34%,var(--line))}
-  .sev.h{color:var(--high);background:var(--high-tint);border-color:color-mix(in srgb,var(--high) 34%,var(--line))}
-  .sev.m{color:var(--warn);background:var(--warn-tint);border-color:color-mix(in srgb,var(--warn) 34%,var(--line))}
-  .sev.l{color:var(--muted);background:var(--panel);border-color:var(--line)}
-  .sev.i{color:var(--accent-ink);background:var(--accent-tint);border-color:color-mix(in srgb,var(--accent) 30%,var(--line))}
-  .sev.v{color:var(--accent-ink);background:var(--accent-tint);border-color:color-mix(in srgb,var(--accent) 30%,var(--line))}
+/* coverage chips */
+.cov{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-size:.81rem;border:1px solid var(--line);border-radius:999px;padding:6px 13px;
+  background:rgba(255,255,255,.025);display:inline-flex;align-items:center;gap:8px;color:var(--text-dim)}
+.chip .id{font-family:var(--font-mono);font-size:.68rem;color:var(--cyan);opacity:.85}
 
-  .catgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:6px}
-  @media (max-width:820px){.catgrid{grid-template-columns:1fr}}
-  .cat{border:1px solid var(--line);border-radius:14px;background:var(--bg-2);padding:16px 17px;box-shadow:var(--shadow)}
-  .cat-head{display:flex;align-items:center;gap:10px}
-  .cat-head h3{margin:0;font-size:1.02rem;font-weight:730;letter-spacing:-.01em}
-  .cat-count{margin-left:auto;font-family:var(--font-mono);font-size:.72rem;font-weight:700;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:2px 9px}
-  .cat-desc{margin:6px 0 12px;color:var(--muted);font-size:.85rem}
-  .rule-list{display:flex;flex-direction:column;gap:9px}
-  .rule{display:grid;grid-template-columns:auto 1fr auto;gap:8px 10px;align-items:baseline;padding-bottom:9px;border-bottom:1px dashed var(--line)}
-  .rule:last-child{border-bottom:0;padding-bottom:0}
-  .rid{font-size:.76rem;color:var(--accent-ink);font-weight:600;white-space:nowrap}
-  .rttl{font-size:.88rem;color:var(--ink);font-weight:550}
-  .refs{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:5px}
-  .ref{font-family:var(--font-mono);font-size:.66rem;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:2px 6px}
+/* note */
+.note{border:1px solid var(--line);border-left:2px solid var(--cyan);border-radius:12px;
+  background:linear-gradient(90deg,rgba(0,243,255,.05),rgba(255,255,255,.012));padding:20px 22px;margin-top:30px}
+.note p{margin:0;color:var(--text-dim);font-size:.94rem}
+.note b{color:var(--text)}
 
-  /* framework glossary */
-  .gloss{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px}
-  @media (max-width:760px){.gloss{grid-template-columns:1fr}}
-  .gl{border:1px solid var(--line);border-radius:12px;padding:15px 16px;background:var(--bg-2)}
-  .gl b{display:block;font-size:.95rem;margin-bottom:3px}
-  .gl code{font-size:.72rem;color:var(--accent-ink)}
-  .gl p{margin:6px 0 0;font-size:.86rem;color:var(--muted)}
+/* next layers */
+.next{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:30px}
+@media (max-width:680px){.next{grid-template-columns:1fr}}
+.nextcard{display:flex;flex-direction:column;gap:6px;border:1px solid var(--line);border-radius:16px;padding:24px;
+  background:linear-gradient(165deg,rgba(255,255,255,.04),rgba(255,255,255,.006));
+  transition:border-color .35s var(--ease),transform .35s var(--ease),box-shadow .35s var(--ease)}
+.nextcard:hover{border-color:rgba(0,243,255,.4);transform:translateY(-3px);box-shadow:0 24px 56px -34px rgba(0,243,255,.5)}
+.nextcard:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+.nextcard .ly{font-family:var(--font-mono);font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:var(--violet);font-weight:650}
+.nextcard h3{font-family:var(--font-display);margin:3px 0 0;font-size:1.18rem;font-weight:680}
+.nextcard p{margin:0;color:var(--text-dim);font-size:.92rem}
+.nextcard .go{margin-top:8px;color:var(--cyan);font-family:var(--font-mono);font-size:.8rem;font-weight:650}
 
-  .doclist{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
-  @media (max-width:680px){.doclist{grid-template-columns:1fr}}
-  .doclist a{display:block;text-decoration:none;border:1px solid var(--line);border-radius:12px;padding:15px 16px;background:var(--bg-2);transition:border-color .15s,transform .15s}
-  .doclist a:hover{border-color:var(--accent);transform:translateY(-1px)}
-  .doclist b{display:block;font-size:.95rem}
-  .doclist span{color:var(--muted);font-size:.85rem}
-  .doclist code{color:var(--accent-ink);font-size:.78rem}
+/* footer */
+footer{border-top:1px solid var(--line);padding:44px 0 56px;position:relative;z-index:5;background:rgba(8,8,10,.6)}
+.foot{display:flex;flex-wrap:wrap;gap:22px;justify-content:space-between;align-items:center}
+.foot-meta{display:flex;gap:15px;flex-wrap:wrap;align-items:center;font-family:var(--font-mono);font-size:.79rem;color:var(--text-mute)}
+.foot-meta code{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:6px;padding:3px 9px;color:var(--text-dim)}
+.foot-meta a{color:var(--cyan)}
+.foot-meta a:hover{text-decoration:underline}
+/* ---------- reference-specific ---------- */
+.shell{display:grid;grid-template-columns:212px 1fr;gap:44px;padding:132px 0 30px;position:relative;z-index:5}
+@media (max-width:940px){.shell{grid-template-columns:1fr;gap:10px;padding-top:112px}}
+.sidenav{position:sticky;top:88px;align-self:start;height:max-content}
+@media (max-width:940px){.sidenav{position:static;border:1px solid var(--line);border-radius:13px;
+  padding:12px;background:rgba(20,20,26,.6);margin-bottom:16px}}
+.sidenav .lbl{font-family:var(--font-mono);font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--text-mute);font-weight:650;margin:0 0 12px;padding-left:13px}
+.sidenav a{display:block;color:var(--text-mute);font-size:.87rem;font-weight:500;padding:7px 13px;
+  border-radius:8px;border-left:2px solid transparent;transition:color .2s var(--ease),background .2s var(--ease),border-color .2s var(--ease)}
+.sidenav a:hover{color:var(--text);background:rgba(255,255,255,.03)}
+.sidenav a.active{color:var(--cyan);border-left-color:var(--cyan);background:rgba(0,243,255,.07)}
+.sidenav a:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 
-  .note{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;background:var(--panel);padding:16px 18px;margin-top:22px}
-  .note p{margin:0;color:var(--ink-soft);font-size:.92rem}
-  .note b{color:var(--ink)}
+.doc{min-width:0}
+.doc-hd h1{font-family:var(--font-display);font-size:clamp(2.1rem,4.6vw,3.1rem);letter-spacing:-.035em;
+  font-weight:700;margin:.3em 0 .28em;text-wrap:balance}
+.doc-hd h1 .em{background:linear-gradient(180deg,#fff 10%,var(--cyan) 60%,var(--violet) 130%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.doc-hd p{color:var(--text-dim);margin:0;max-width:66ch;font-size:1.03rem}
+.doc-hd .inline,.lead .inline,p .inline{font-family:var(--font-mono);font-size:.85em;
+  background:rgba(0,243,255,.08);border:1px solid rgba(0,243,255,.18);border-radius:5px;padding:1px 6px;color:var(--cyan)}
 
-  footer{border-top:1px solid var(--line);padding:32px 0 48px;color:var(--muted);margin-top:40px}
-  footer .wrap{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between}
-  .foot-meta{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:.85rem}
-  .foot-meta code{background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:3px 8px;color:var(--ink-soft)}
-  .foot-meta a{color:var(--accent-ink);text-decoration:none;font-weight:600}
-  .foot-meta a:hover{text-decoration:underline}
+h2.sec{font-family:var(--font-display);font-size:1.55rem;letter-spacing:-.028em;font-weight:700;
+  margin:58px 0 6px;padding-top:20px;border-top:1px solid var(--line);scroll-margin-top:96px}
+h2.sec:first-of-type{border-top:0;margin-top:34px}
+.lead{color:var(--text-dim);margin:0 0 18px;max-width:72ch}
+h3.sub{font-family:var(--font-display);font-size:1.06rem;font-weight:660;margin:28px 0 8px}
+p{color:var(--text-dim)}
+
+/* tables */
+.tbl-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:13px;margin-top:12px;background:rgba(255,255,255,.014)}
+table{border-collapse:collapse;width:100%;min-width:520px;font-size:.89rem}
+th,td{text-align:left;padding:12px 15px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:rgba(0,0,0,.35);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--text-mute);font-weight:700;font-family:var(--font-mono)}
+tr:last-child td{border-bottom:0}
+tbody tr{transition:background .2s var(--ease)}
+tbody tr:hover{background:rgba(0,243,255,.035)}
+td{color:var(--text-dim)}
+td b{color:var(--text)}
+td code{font-size:.83rem;color:var(--cyan)}
+td .desc{color:var(--text-mute);font-size:.82rem}
+
+/* code */
+pre.code{margin:14px 0 0;background:rgba(0,0,0,.45);border:1px solid var(--line);border-radius:13px;
+  padding:17px 19px;overflow-x:auto;font-family:var(--font-mono);font-size:.82rem;line-height:1.7;color:var(--text-dim)}
+pre.code .c{color:var(--text-mute)}
+pre.code .k{color:var(--cyan);font-weight:600}
+
+/* trust tiers */
+.tiers{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}
+@media (max-width:780px){.tiers{grid-template-columns:1fr 1fr}}
+.tierc{border:1px solid var(--line);border-radius:13px;padding:15px 16px;
+  background:linear-gradient(165deg,rgba(255,255,255,.04),rgba(255,255,255,.006));
+  transition:border-color .3s var(--ease)}
+.tierc:hover{border-color:var(--line-hot)}
+.tierc .n{font-family:var(--font-mono);font-weight:700;font-size:.79rem;color:var(--cyan);letter-spacing:.08em}
+.tierc p{margin:7px 0 0;font-size:.84rem;color:var(--text-mute)}
+.tierc code{color:var(--text-dim);font-size:.8rem}
+
+/* severity pills */
+.sev{font-family:var(--font-mono);font-size:.63rem;font-weight:700;letter-spacing:.07em;
+  padding:3px 8px;border-radius:5px;border:1px solid;white-space:nowrap}
+.sev.c{color:var(--block);background:rgba(255,46,99,.1);border-color:rgba(255,46,99,.32)}
+.sev.h{color:#ff9a3c;background:rgba(255,154,60,.1);border-color:rgba(255,154,60,.3)}
+.sev.m{color:var(--warn);background:rgba(255,196,0,.09);border-color:rgba(255,196,0,.28)}
+.sev.l{color:var(--text-mute);background:rgba(255,255,255,.03);border-color:var(--line)}
+.sev.i{color:var(--cyan);background:rgba(0,243,255,.08);border-color:rgba(0,243,255,.26)}
+.sev.v{color:var(--violet);background:rgba(112,0,255,.12);border-color:rgba(112,0,255,.34)}
+
+/* catalogue filter */
+.filter{position:sticky;top:82px;z-index:40;margin:18px 0 22px;padding:14px;border:1px solid var(--line);
+  border-radius:14px;background:rgba(10,10,12,.9);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.filter input{flex:1;min-width:190px;background:rgba(0,0,0,.5);border:1px solid var(--line);border-radius:10px;
+  padding:10px 13px;color:var(--text);font-family:var(--font-mono);font-size:.83rem;outline:none;
+  transition:border-color .25s var(--ease),box-shadow .25s var(--ease)}
+.filter input::placeholder{color:var(--text-mute)}
+.filter input:focus{border-color:rgba(0,243,255,.5);box-shadow:0 0 0 3px rgba(0,243,255,.1)}
+.fchips{display:flex;gap:6px;flex-wrap:wrap}
+.fchip{font-family:var(--font-mono);font-size:.68rem;font-weight:650;letter-spacing:.05em;cursor:pointer;
+  padding:7px 11px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.025);
+  color:var(--text-mute);transition:all .25s var(--ease)}
+.fchip:hover{color:var(--text);border-color:var(--line-hot)}
+.fchip[aria-pressed="true"]{color:var(--cyan);border-color:rgba(0,243,255,.45);background:rgba(0,243,255,.1)}
+.fchip:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+.fcount{font-family:var(--font-mono);font-size:.74rem;color:var(--text-mute);white-space:nowrap}
+.fcount b{color:var(--cyan)}
+
+/* catalogue */
+.catgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:860px){.catgrid{grid-template-columns:1fr}}
+.cat{border:1px solid var(--line);border-radius:15px;padding:17px 18px;
+  background:linear-gradient(165deg,rgba(255,255,255,.038),rgba(255,255,255,.006));
+  transition:border-color .3s var(--ease),transform .3s var(--ease)}
+.cat:hover{border-color:var(--line-hot);transform:translateY(-2px)}
+.cat[hidden]{display:none}
+.cat-head{display:flex;align-items:center;gap:10px}
+.cat-head h3{font-family:var(--font-display);margin:0;font-size:1.02rem;font-weight:670;letter-spacing:-.015em}
+.cat-count{margin-left:auto;font-family:var(--font-mono);font-size:.7rem;font-weight:700;color:var(--cyan);
+  background:rgba(0,243,255,.09);border:1px solid rgba(0,243,255,.22);border-radius:20px;padding:2px 9px}
+.cat-desc{margin:7px 0 13px;color:var(--text-mute);font-size:.84rem}
+.rule-list{display:flex;flex-direction:column;gap:10px}
+.rule{display:grid;grid-template-columns:auto 1fr auto;gap:8px 10px;align-items:baseline;
+  padding-bottom:10px;border-bottom:1px dashed var(--line)}
+.rule:last-child{border-bottom:0;padding-bottom:0}
+.rule[hidden]{display:none}
+.rid{font-family:var(--font-mono);font-size:.75rem;color:var(--cyan);font-weight:600;white-space:nowrap}
+.rttl{font-size:.87rem;color:var(--text);font-weight:500}
+.refs{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:5px}
+.ref{font-family:var(--font-mono);font-size:.64rem;color:var(--text-mute);background:rgba(255,255,255,.03);
+  border:1px solid var(--line);border-radius:5px;padding:2px 7px}
+.noresult{display:none;padding:26px;text-align:center;color:var(--text-mute);font-family:var(--font-mono);font-size:.86rem}
+.noresult.on{display:block}
+
+/* glossary */
+.gloss{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}
+@media (max-width:780px){.gloss{grid-template-columns:1fr}}
+.gl{border:1px solid var(--line);border-radius:13px;padding:16px 17px;
+  background:linear-gradient(165deg,rgba(255,255,255,.038),rgba(255,255,255,.006));
+  transition:border-color .3s var(--ease)}
+.gl:hover{border-color:var(--line-hot)}
+.gl b{display:block;font-family:var(--font-display);font-size:.98rem;margin-bottom:4px;color:var(--text)}
+.gl code{font-size:.71rem;color:var(--cyan)}
+.gl p{margin:7px 0 0;font-size:.85rem;color:var(--text-mute)}
+
+/* doc links */
+.doclist{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px}
+@media (max-width:680px){.doclist{grid-template-columns:1fr}}
+.doclist a{display:block;border:1px solid var(--line);border-radius:13px;padding:16px 17px;
+  background:linear-gradient(165deg,rgba(255,255,255,.038),rgba(255,255,255,.006));
+  transition:border-color .3s var(--ease),transform .3s var(--ease)}
+.doclist a:hover{border-color:rgba(0,243,255,.4);transform:translateY(-2px)}
+.doclist a:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+.doclist b{display:block;font-family:var(--font-mono);font-size:.9rem;color:var(--cyan)}
+.doclist span{color:var(--text-mute);font-size:.84rem}
+
+/* pipeline reuse */
+.pipe-scroll{overflow-x:auto;padding-bottom:8px}
+.pipe{display:flex;align-items:stretch;min-width:740px}
+
 </style>
 </head>
 <body>
 
-  <div class="topbar">
-    <div class="wrap">
-      <span class="brand"><span class="mark" aria-hidden="true"></span> AIAgentFirewall</span>
-      <nav class="layers" aria-label="Documentation layers">
-        <a href="index.html"><span class="ln">01</span><span class="lt">Overview</span></a>
-        <a href="features.html"><span class="ln">02</span><span class="lt">Features</span></a>
-        <a href="reference.html" aria-current="page"><span class="ln">03</span><span class="lt">Reference</span></a>
-      </nav>
-    </div>
+<canvas id="bgfx" aria-hidden="true"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+<div class="scanlines" aria-hidden="true"></div>
+<div class="progress" id="prog" aria-hidden="true"></div>
+
+<nav class="nav" id="nav" aria-label="Primary">
+  <span class="logo"><span class="glyph" aria-hidden="true"></span> AIAgentFirewall</span>
+  <div class="layers">
+    <a href="index.html"><span class="ln">01</span><span class="lt">Overview</span></a>
+    <a href="features.html"><span class="ln">02</span><span class="lt">Features</span></a>
+    <a href="reference.html" aria-current="page"><span class="ln">03</span><span class="lt">Reference</span></a>
   </div>
+</nav>
 
-  <div class="wrap">
-    <div class="shell">
+<div class="wrap">
+  <div class="shell">
+    <aside class="sidenav" aria-label="On this page">
+      <p class="lbl">On this page</p>
+      <a href="#architecture">Architecture</a>
+      <a href="#tiers">The four tiers</a>
+      <a href="#commands">Commands & flags</a>
+      <a href="#trust">Trust tiers</a>
+      <a href="#policy">Policy & verdicts</a>
+      <a href="#catalogue">Detection catalogue</a>
+      <a href="#frameworks">Framework glossary</a>
+      <a href="#guardrails">Guardrails API</a>
+      <a href="#docs">Source docs</a>
+    </aside>
+    <main class="doc">
 
-      <aside class="sidenav" aria-label="On this page">
-        <p class="lbl">On this page</p>
-        <a href="#architecture">Architecture</a>
-        <a href="#tiers">The four tiers</a>
-        <a href="#commands">Commands &amp; flags</a>
-        <a href="#trust">Trust tiers</a>
-        <a href="#policy">Policy &amp; verdicts</a>
-        <a href="#catalogue">Detection catalogue</a>
-        <a href="#frameworks">Framework glossary</a>
-        <a href="#guardrails">Guardrails API</a>
-        <a href="#docs">Source docs</a>
-      </aside>
-
-      <main class="doc">
         <div class="doc-hd">
-          <span class="kicker">Layer 03 · Reference</span>
-          <h1>How every piece works.</h1>
+          <span class="sec-tag">Layer 03 · Reference</span>
+          <h1>How every <span class="em">piece works</span>.</h1>
           <p>The deep layer: the pipeline, every command and flag, the full detection catalogue with framework mappings, and the enforcement API. Built from the tool's own <span class="inline">afw rules</span> output at v1.3.1.</p>
         </div>
 
@@ -300,184 +481,191 @@
         <!-- CATALOGUE -->
         <h2 class="sec" id="catalogue">Detection catalogue</h2>
         <p class="lead">All <b>59 detections</b> across <b>23 categories</b>, each mapped to an industry framework. IDs ending in <span class="inline">-*</span> are structural rules that emit a family of findings; <span class="inline">varies</span> means severity depends on what's matched.</p>
-        <div class="legend" aria-hidden="true">
-          <span class="sev c">CRITICAL</span><span class="sev h">HIGH</span><span class="sev m">MEDIUM</span><span class="sev l">LOW</span><span class="sev i">INFO</span><span class="sev v">VARIES</span>
-        </div>
-
-        <div class="catgrid">
-<div class="cat">
+        <div class="filter">
+  <input id="q" type="search" placeholder="Filter 59 detections — try &quot;ssh&quot;, &quot;exfil&quot;, &quot;AFW-MEM&quot;, &quot;prompt&quot;…" aria-label="Filter detections">
+  <div class="fchips" role="group" aria-label="Filter by severity">
+    <button class="fchip" data-sev="c" aria-pressed="false">CRITICAL</button>
+    <button class="fchip" data-sev="h" aria-pressed="false">HIGH</button>
+    <button class="fchip" data-sev="m" aria-pressed="false">MEDIUM</button>
+    <button class="fchip" data-sev="v" aria-pressed="false">VARIES</button>
+  </div>
+  <span class="fcount" id="fcount"><b>23</b> categories · <b>59</b> detections</span>
+</div>
+<p class="noresult" id="noresult">No detection matches that filter.</p>
+<div class="catgrid">
+<div class="cat" data-s="secret &amp; credential access 6 reads ssh/aws/cloud keys, .env, dumps environment afw-sec-001 reads ssh private keys critical owasp-llm02:sensitive-information-disclosure mitre-atlas:credential-access afw-sec-002 reads cloud credential files critical owasp-llm02:sensitive-information-disclosure mitre-atlas:credential-access afw-sec-003 dumps environment variables high owasp-llm02:sensitive-information-disclosure mitre-atlas:credential-access afw-sec-004 targets provider api keys high owasp-llm02:sensitive-information-disclosure mitre-atlas:credential-access afw-sec-005 reads dotenv / secret files medium owasp-llm02:sensitive-information-disclosure mitre-atlas:credential-access afw-sec-006 accesses os keychain / secret store high owasp-llm02:sensitive-information-disclosure mitre-atlas:credential-access" data-sev="c h m">
 <div class="cat-head"><h3>Secret &amp; credential access</h3><span class="cat-count">6</span></div>
 <p class="cat-desc">Reads SSH/AWS/cloud keys, .env, dumps environment</p>
 <div class="rule-list">
-<div class="rule"><code class="rid">AFW-SEC-001</code><span class="rttl">Reads SSH private keys</span><span class="sev c">CRITICAL</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span><span class="ref">MITRE-ATLAS:Credential-Access</span></span></div>
-<div class="rule"><code class="rid">AFW-SEC-002</code><span class="rttl">Reads cloud credential files</span><span class="sev c">CRITICAL</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span><span class="ref">MITRE-ATLAS:Credential-Access</span></span></div>
-<div class="rule"><code class="rid">AFW-SEC-003</code><span class="rttl">Dumps environment variables</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span><span class="ref">MITRE-ATLAS:Credential-Access</span></span></div>
-<div class="rule"><code class="rid">AFW-SEC-004</code><span class="rttl">Targets provider API keys</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span><span class="ref">MITRE-ATLAS:Credential-Access</span></span></div>
-<div class="rule"><code class="rid">AFW-SEC-005</code><span class="rttl">Reads dotenv / secret files</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span><span class="ref">MITRE-ATLAS:Credential-Access</span></span></div>
-<div class="rule"><code class="rid">AFW-SEC-006</code><span class="rttl">Accesses OS keychain / secret store</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span><span class="ref">MITRE-ATLAS:Credential-Access</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-SEC-001</code><span class="rttl">Reads SSH private keys</span><span class="sev c">CRITICAL</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span><span class="ref">MITRE-ATLAS:Credential-Access</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-SEC-002</code><span class="rttl">Reads cloud credential files</span><span class="sev c">CRITICAL</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span><span class="ref">MITRE-ATLAS:Credential-Access</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-SEC-003</code><span class="rttl">Dumps environment variables</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span><span class="ref">MITRE-ATLAS:Credential-Access</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-SEC-004</code><span class="rttl">Targets provider API keys</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span><span class="ref">MITRE-ATLAS:Credential-Access</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-SEC-005</code><span class="rttl">Reads dotenv / secret files</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span><span class="ref">MITRE-ATLAS:Credential-Access</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-SEC-006</code><span class="rttl">Accesses OS keychain / secret store</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span><span class="ref">MITRE-ATLAS:Credential-Access</span></span></div>
 </div></div>
-<div class="cat">
+<div class="cat" data-s="embedded credentials 6 private keys / api tokens shipped inside the artifact afw-key-001 bundled private key high owasp-llm02:sensitive-information-disclosure afw-key-002 aws access key id high owasp-llm02:sensitive-information-disclosure afw-key-003 github / gitlab token high owasp-llm02:sensitive-information-disclosure afw-key-004 ai provider api key high owasp-llm02:sensitive-information-disclosure afw-key-005 slack token high owasp-llm02:sensitive-information-disclosure afw-key-006 generic secret assignment medium owasp-llm02:sensitive-information-disclosure" data-sev="h m">
 <div class="cat-head"><h3>Embedded credentials</h3><span class="cat-count">6</span></div>
 <p class="cat-desc">Private keys / API tokens shipped inside the artifact</p>
 <div class="rule-list">
-<div class="rule"><code class="rid">AFW-KEY-001</code><span class="rttl">Bundled private key</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
-<div class="rule"><code class="rid">AFW-KEY-002</code><span class="rttl">AWS access key id</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
-<div class="rule"><code class="rid">AFW-KEY-003</code><span class="rttl">GitHub / GitLab token</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
-<div class="rule"><code class="rid">AFW-KEY-004</code><span class="rttl">AI provider API key</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
-<div class="rule"><code class="rid">AFW-KEY-005</code><span class="rttl">Slack token</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
-<div class="rule"><code class="rid">AFW-KEY-006</code><span class="rttl">Generic secret assignment</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-KEY-001</code><span class="rttl">Bundled private key</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-KEY-002</code><span class="rttl">AWS access key id</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-KEY-003</code><span class="rttl">GitHub / GitLab token</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-KEY-004</code><span class="rttl">AI provider API key</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-KEY-005</code><span class="rttl">Slack token</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-KEY-006</code><span class="rttl">Generic secret assignment</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
 </div></div>
-<div class="cat">
+<div class="cat" data-s="data exfiltration 7 uploads to webhooks/paste sites, raw-ip egress, reverse shells afw-net-001 exfiltration to paste/webhook service high mitre-atlas:exfiltration owasp-llm02:sensitive-information-disclosure afw-net-002 pipes local data to the network high mitre-atlas:exfiltration owasp-llm02:sensitive-information-disclosure afw-net-003 raw ip address egress medium mitre-atlas:exfiltration owasp-llm02:sensitive-information-disclosure afw-net-004 reverse shell pattern critical mitre-atlas:exfiltration owasp-llm02:sensitive-information-disclosure afw-net-005 dns-based exfiltration high mitre-atlas:exfiltration owasp-llm02:sensitive-information-disclosure afw-net-006 suspicious outbound post of data medium mitre-atlas:exfiltration owasp-llm02:sensitive-information-disclosure afw-net-007 auto-fetched image/link with a dynamic url (exfil channel) medium mitre-atlas:exfiltration owasp-llm02:sensitive-information-disclosure owasp-llm01:prompt-injection" data-sev="c h m">
 <div class="cat-head"><h3>Data exfiltration</h3><span class="cat-count">7</span></div>
 <p class="cat-desc">Uploads to webhooks/paste sites, raw-IP egress, reverse shells</p>
 <div class="rule-list">
-<div class="rule"><code class="rid">AFW-NET-001</code><span class="rttl">Exfiltration to paste/webhook service</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Exfiltration</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
-<div class="rule"><code class="rid">AFW-NET-002</code><span class="rttl">Pipes local data to the network</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Exfiltration</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
-<div class="rule"><code class="rid">AFW-NET-003</code><span class="rttl">Raw IP address egress</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">MITRE-ATLAS:Exfiltration</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
-<div class="rule"><code class="rid">AFW-NET-004</code><span class="rttl">Reverse shell pattern</span><span class="sev c">CRITICAL</span><span class="refs"><span class="ref">MITRE-ATLAS:Exfiltration</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
-<div class="rule"><code class="rid">AFW-NET-005</code><span class="rttl">DNS-based exfiltration</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Exfiltration</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
-<div class="rule"><code class="rid">AFW-NET-006</code><span class="rttl">Suspicious outbound POST of data</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">MITRE-ATLAS:Exfiltration</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
-<div class="rule"><code class="rid">AFW-NET-007</code><span class="rttl">Auto-fetched image/link with a dynamic URL (exfil channel)</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">MITRE-ATLAS:Exfiltration</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span><span class="ref">OWASP-LLM01:Prompt-Injection</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-NET-001</code><span class="rttl">Exfiltration to paste/webhook service</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Exfiltration</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-NET-002</code><span class="rttl">Pipes local data to the network</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Exfiltration</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-NET-003</code><span class="rttl">Raw IP address egress</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">MITRE-ATLAS:Exfiltration</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-NET-004</code><span class="rttl">Reverse shell pattern</span><span class="sev c">CRITICAL</span><span class="refs"><span class="ref">MITRE-ATLAS:Exfiltration</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-NET-005</code><span class="rttl">DNS-based exfiltration</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Exfiltration</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-NET-006</code><span class="rttl">Suspicious outbound POST of data</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">MITRE-ATLAS:Exfiltration</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-NET-007</code><span class="rttl">Auto-fetched image/link with a dynamic URL (exfil channel)</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">MITRE-ATLAS:Exfiltration</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span><span class="ref">OWASP-LLM01:Prompt-Injection</span></span></div>
 </div></div>
-<div class="cat">
+<div class="cat" data-s="obfuscation &amp; dynamic exec 6 curl|bash, base64|sh, eval/exec on runtime strings afw-blob-* high-entropy packed / encoded blob varies afw-obf-001 download-and-execute (curl | bash) critical mitre-atlas:execution mitre-atlas:defense-evasion afw-obf-002 dynamic code execution high mitre-atlas:execution mitre-atlas:defense-evasion afw-obf-003 base64 decode-and-run high mitre-atlas:execution mitre-atlas:defense-evasion afw-obf-004 hex / escape-encoded payload medium mitre-atlas:execution mitre-atlas:defense-evasion afw-obf-005 shell obfuscation via ifs / variable splicing medium mitre-atlas:execution mitre-atlas:defense-evasion" data-sev="c h m v">
 <div class="cat-head"><h3>Obfuscation &amp; dynamic exec</h3><span class="cat-count">6</span></div>
 <p class="cat-desc">curl|bash, base64|sh, eval/exec on runtime strings</p>
 <div class="rule-list">
-<div class="rule"><code class="rid">AFW-BLOB-*</code><span class="rttl">High-entropy packed / encoded blob</span><span class="sev v">varies</span><span class="refs"></span></div>
-<div class="rule"><code class="rid">AFW-OBF-001</code><span class="rttl">Download-and-execute (curl | bash)</span><span class="sev c">CRITICAL</span><span class="refs"><span class="ref">MITRE-ATLAS:Execution</span><span class="ref">MITRE-ATLAS:Defense-Evasion</span></span></div>
-<div class="rule"><code class="rid">AFW-OBF-002</code><span class="rttl">Dynamic code execution</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Execution</span><span class="ref">MITRE-ATLAS:Defense-Evasion</span></span></div>
-<div class="rule"><code class="rid">AFW-OBF-003</code><span class="rttl">Base64 decode-and-run</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Execution</span><span class="ref">MITRE-ATLAS:Defense-Evasion</span></span></div>
-<div class="rule"><code class="rid">AFW-OBF-004</code><span class="rttl">Hex / escape-encoded payload</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">MITRE-ATLAS:Execution</span><span class="ref">MITRE-ATLAS:Defense-Evasion</span></span></div>
-<div class="rule"><code class="rid">AFW-OBF-005</code><span class="rttl">Shell obfuscation via IFS / variable splicing</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">MITRE-ATLAS:Execution</span><span class="ref">MITRE-ATLAS:Defense-Evasion</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-BLOB-*</code><span class="rttl">High-entropy packed / encoded blob</span><span class="sev v">varies</span><span class="refs"></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-OBF-001</code><span class="rttl">Download-and-execute (curl | bash)</span><span class="sev c">CRITICAL</span><span class="refs"><span class="ref">MITRE-ATLAS:Execution</span><span class="ref">MITRE-ATLAS:Defense-Evasion</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-OBF-002</code><span class="rttl">Dynamic code execution</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Execution</span><span class="ref">MITRE-ATLAS:Defense-Evasion</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-OBF-003</code><span class="rttl">Base64 decode-and-run</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Execution</span><span class="ref">MITRE-ATLAS:Defense-Evasion</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-OBF-004</code><span class="rttl">Hex / escape-encoded payload</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">MITRE-ATLAS:Execution</span><span class="ref">MITRE-ATLAS:Defense-Evasion</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-OBF-005</code><span class="rttl">Shell obfuscation via IFS / variable splicing</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">MITRE-ATLAS:Execution</span><span class="ref">MITRE-ATLAS:Defense-Evasion</span></span></div>
 </div></div>
-<div class="cat">
+<div class="cat" data-s="unsafe deserialization 3 pickle/torch.load, unsafe yaml, bundled weight files afw-dsr-001 unsafe pickle deserialization high owasp-llm04:data-and-model-poisoning mitre-atlas:execution afw-dsr-002 loads model weights that can execute code medium owasp-llm04:data-and-model-poisoning mitre-atlas:execution afw-dsr-003 bundled pickle / weight file low owasp-llm04:data-and-model-poisoning mitre-atlas:execution" data-sev="h l m">
 <div class="cat-head"><h3>Unsafe deserialization</h3><span class="cat-count">3</span></div>
 <p class="cat-desc">pickle/torch.load, unsafe yaml, bundled weight files</p>
 <div class="rule-list">
-<div class="rule"><code class="rid">AFW-DSR-001</code><span class="rttl">Unsafe pickle deserialization</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM04:Data-and-Model-Poisoning</span><span class="ref">MITRE-ATLAS:Execution</span></span></div>
-<div class="rule"><code class="rid">AFW-DSR-002</code><span class="rttl">Loads model weights that can execute code</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">OWASP-LLM04:Data-and-Model-Poisoning</span><span class="ref">MITRE-ATLAS:Execution</span></span></div>
-<div class="rule"><code class="rid">AFW-DSR-003</code><span class="rttl">Bundled pickle / weight file</span><span class="sev l">LOW</span><span class="refs"><span class="ref">OWASP-LLM04:Data-and-Model-Poisoning</span><span class="ref">MITRE-ATLAS:Execution</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-DSR-001</code><span class="rttl">Unsafe pickle deserialization</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM04:Data-and-Model-Poisoning</span><span class="ref">MITRE-ATLAS:Execution</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-DSR-002</code><span class="rttl">Loads model weights that can execute code</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">OWASP-LLM04:Data-and-Model-Poisoning</span><span class="ref">MITRE-ATLAS:Execution</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-DSR-003</code><span class="rttl">Bundled pickle / weight file</span><span class="sev l">LOW</span><span class="refs"><span class="ref">OWASP-LLM04:Data-and-Model-Poisoning</span><span class="ref">MITRE-ATLAS:Execution</span></span></div>
 </div></div>
-<div class="cat">
+<div class="cat" data-s="destructive actions 5 rm -rf, mkfs, fork bombs, disabling tls/firewalls, miners afw-des-001 recursive force delete of a broad path critical mitre-atlas:impact owasp-llm06:excessive-agency afw-des-002 disk / filesystem destruction critical mitre-atlas:impact owasp-llm06:excessive-agency afw-des-003 weakens system security posture high mitre-atlas:impact owasp-llm06:excessive-agency afw-des-004 crypto-miner / resource abuse high mitre-atlas:impact owasp-llm06:excessive-agency afw-des-005 persistence via cron / autostart high mitre-atlas:impact owasp-llm06:excessive-agency" data-sev="c h">
 <div class="cat-head"><h3>Destructive actions</h3><span class="cat-count">5</span></div>
 <p class="cat-desc">rm -rf, mkfs, fork bombs, disabling TLS/firewalls, miners</p>
 <div class="rule-list">
-<div class="rule"><code class="rid">AFW-DES-001</code><span class="rttl">Recursive force delete of a broad path</span><span class="sev c">CRITICAL</span><span class="refs"><span class="ref">MITRE-ATLAS:Impact</span><span class="ref">OWASP-LLM06:Excessive-Agency</span></span></div>
-<div class="rule"><code class="rid">AFW-DES-002</code><span class="rttl">Disk / filesystem destruction</span><span class="sev c">CRITICAL</span><span class="refs"><span class="ref">MITRE-ATLAS:Impact</span><span class="ref">OWASP-LLM06:Excessive-Agency</span></span></div>
-<div class="rule"><code class="rid">AFW-DES-003</code><span class="rttl">Weakens system security posture</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Impact</span><span class="ref">OWASP-LLM06:Excessive-Agency</span></span></div>
-<div class="rule"><code class="rid">AFW-DES-004</code><span class="rttl">Crypto-miner / resource abuse</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Impact</span><span class="ref">OWASP-LLM06:Excessive-Agency</span></span></div>
-<div class="rule"><code class="rid">AFW-DES-005</code><span class="rttl">Persistence via cron / autostart</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Impact</span><span class="ref">OWASP-LLM06:Excessive-Agency</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-DES-001</code><span class="rttl">Recursive force delete of a broad path</span><span class="sev c">CRITICAL</span><span class="refs"><span class="ref">MITRE-ATLAS:Impact</span><span class="ref">OWASP-LLM06:Excessive-Agency</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-DES-002</code><span class="rttl">Disk / filesystem destruction</span><span class="sev c">CRITICAL</span><span class="refs"><span class="ref">MITRE-ATLAS:Impact</span><span class="ref">OWASP-LLM06:Excessive-Agency</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-DES-003</code><span class="rttl">Weakens system security posture</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Impact</span><span class="ref">OWASP-LLM06:Excessive-Agency</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-DES-004</code><span class="rttl">Crypto-miner / resource abuse</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Impact</span><span class="ref">OWASP-LLM06:Excessive-Agency</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-DES-005</code><span class="rttl">Persistence via cron / autostart</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Impact</span><span class="ref">OWASP-LLM06:Excessive-Agency</span></span></div>
 </div></div>
-<div class="cat">
+<div class="cat" data-s="filesystem overreach 3 broad/sensitive filesystem writes and reads afw-fs-001 reads browser / app credential stores high mitre-atlas:credential-access owasp-llm02:sensitive-information-disclosure afw-fs-002 reads shell / command history medium mitre-atlas:credential-access owasp-llm02:sensitive-information-disclosure afw-fs-003 broad home-directory sweep medium mitre-atlas:credential-access owasp-llm02:sensitive-information-disclosure" data-sev="h m">
 <div class="cat-head"><h3>Filesystem overreach</h3><span class="cat-count">3</span></div>
 <p class="cat-desc">Broad/sensitive filesystem writes and reads</p>
 <div class="rule-list">
-<div class="rule"><code class="rid">AFW-FS-001</code><span class="rttl">Reads browser / app credential stores</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Credential-Access</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
-<div class="rule"><code class="rid">AFW-FS-002</code><span class="rttl">Reads shell / command history</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">MITRE-ATLAS:Credential-Access</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
-<div class="rule"><code class="rid">AFW-FS-003</code><span class="rttl">Broad home-directory sweep</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">MITRE-ATLAS:Credential-Access</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-FS-001</code><span class="rttl">Reads browser / app credential stores</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Credential-Access</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-FS-002</code><span class="rttl">Reads shell / command history</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">MITRE-ATLAS:Credential-Access</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-FS-003</code><span class="rttl">Broad home-directory sweep</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">MITRE-ATLAS:Credential-Access</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
 </div></div>
-<div class="cat">
+<div class="cat" data-s="anti-forensics 2 clearing shell history, deleting logs afw-af-001 clears shell history medium owasp-agentic:repudiation-and-untraceability mitre-atlas:defense-evasion afw-af-002 deletes or tampers with system logs high owasp-agentic:repudiation-and-untraceability mitre-atlas:defense-evasion" data-sev="h m">
 <div class="cat-head"><h3>Anti-forensics</h3><span class="cat-count">2</span></div>
 <p class="cat-desc">Clearing shell history, deleting logs</p>
 <div class="rule-list">
-<div class="rule"><code class="rid">AFW-AF-001</code><span class="rttl">Clears shell history</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">OWASP-Agentic:Repudiation-and-Untraceability</span><span class="ref">MITRE-ATLAS:Defense-Evasion</span></span></div>
-<div class="rule"><code class="rid">AFW-AF-002</code><span class="rttl">Deletes or tampers with system logs</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-Agentic:Repudiation-and-Untraceability</span><span class="ref">MITRE-ATLAS:Defense-Evasion</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-AF-001</code><span class="rttl">Clears shell history</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">OWASP-Agentic:Repudiation-and-Untraceability</span><span class="ref">MITRE-ATLAS:Defense-Evasion</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-AF-002</code><span class="rttl">Deletes or tampers with system logs</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-Agentic:Repudiation-and-Untraceability</span><span class="ref">MITRE-ATLAS:Defense-Evasion</span></span></div>
 </div></div>
-<div class="cat">
+<div class="cat" data-s="prompt injection 1  ignore previous instructions ,  do not tell the user  afw-inj-* prompt-injection phrasing in model-facing text varies owasp-llm01:prompt-injection" data-sev="v">
 <div class="cat-head"><h3>Prompt injection</h3><span class="cat-count">1</span></div>
 <p class="cat-desc">"ignore previous instructions", "do not tell the user"</p>
 <div class="rule-list">
-<div class="rule"><code class="rid">AFW-INJ-*</code><span class="rttl">Prompt-injection phrasing in model-facing text</span><span class="sev v">varies</span><span class="refs"><span class="ref">OWASP-LLM01:Prompt-Injection</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-INJ-*</code><span class="rttl">Prompt-injection phrasing in model-facing text</span><span class="sev v">varies</span><span class="refs"><span class="ref">OWASP-LLM01:Prompt-Injection</span></span></div>
 </div></div>
-<div class="cat">
+<div class="cat" data-s="tool poisoning 1 hidden directives / secrets inside tool descriptions afw-tpz-* hidden directive / secret in a tool description varies mcp:tool-poisoning" data-sev="v">
 <div class="cat-head"><h3>Tool poisoning</h3><span class="cat-count">1</span></div>
 <p class="cat-desc">Hidden directives / secrets inside tool descriptions</p>
 <div class="rule-list">
-<div class="rule"><code class="rid">AFW-TPZ-*</code><span class="rttl">Hidden directive / secret in a tool description</span><span class="sev v">varies</span><span class="refs"><span class="ref">MCP:Tool-Poisoning</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-TPZ-*</code><span class="rttl">Hidden directive / secret in a tool description</span><span class="sev v">varies</span><span class="refs"><span class="ref">MCP:Tool-Poisoning</span></span></div>
 </div></div>
-<div class="cat">
+<div class="cat" data-s="memory / context poisoning 2 writes to claude.md, .cursorrules, auto-loaded config afw-mem-001 writes to an agent instruction file high owasp-asi06:memory-and-context-poisoning owasp-llm01:prompt-injection afw-mem-002 modifies agent / mcp configuration high owasp-asi06:memory-and-context-poisoning owasp-llm01:prompt-injection" data-sev="h">
 <div class="cat-head"><h3>Memory / context poisoning</h3><span class="cat-count">2</span></div>
 <p class="cat-desc">Writes to CLAUDE.md, .cursorrules, auto-loaded config</p>
 <div class="rule-list">
-<div class="rule"><code class="rid">AFW-MEM-001</code><span class="rttl">Writes to an agent instruction file</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-ASI06:Memory-and-Context-Poisoning</span><span class="ref">OWASP-LLM01:Prompt-Injection</span></span></div>
-<div class="rule"><code class="rid">AFW-MEM-002</code><span class="rttl">Modifies agent / MCP configuration</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-ASI06:Memory-and-Context-Poisoning</span><span class="ref">OWASP-LLM01:Prompt-Injection</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-MEM-001</code><span class="rttl">Writes to an agent instruction file</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-ASI06:Memory-and-Context-Poisoning</span><span class="ref">OWASP-LLM01:Prompt-Injection</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-MEM-002</code><span class="rttl">Modifies agent / MCP configuration</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-ASI06:Memory-and-Context-Poisoning</span><span class="ref">OWASP-LLM01:Prompt-Injection</span></span></div>
 </div></div>
-<div class="cat">
+<div class="cat" data-s="hidden content 1 zero-width chars, bidi override, invisible unicode-tag afw-uni-* invisible / bidirectional unicode trickery varies owasp-llm01:prompt-injection" data-sev="v">
 <div class="cat-head"><h3>Hidden content</h3><span class="cat-count">1</span></div>
 <p class="cat-desc">Zero-width chars, bidi override, invisible Unicode-Tag</p>
 <div class="rule-list">
-<div class="rule"><code class="rid">AFW-UNI-*</code><span class="rttl">Invisible / bidirectional Unicode trickery</span><span class="sev v">varies</span><span class="refs"><span class="ref">OWASP-LLM01:Prompt-Injection</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-UNI-*</code><span class="rttl">Invisible / bidirectional Unicode trickery</span><span class="sev v">varies</span><span class="refs"><span class="ref">OWASP-LLM01:Prompt-Injection</span></span></div>
 </div></div>
-<div class="cat">
+<div class="cat" data-s="improper output handling 2 model output into a shell/sql/html sink afw-out-001 model output flows into a shell/interpreter high owasp-llm05:improper-output-handling afw-out-002 unsanitized output into sql / html medium owasp-llm05:improper-output-handling" data-sev="h m">
 <div class="cat-head"><h3>Improper output handling</h3><span class="cat-count">2</span></div>
 <p class="cat-desc">Model output into a shell/SQL/HTML sink</p>
 <div class="rule-list">
-<div class="rule"><code class="rid">AFW-OUT-001</code><span class="rttl">Model output flows into a shell/interpreter</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM05:Improper-Output-Handling</span></span></div>
-<div class="rule"><code class="rid">AFW-OUT-002</code><span class="rttl">Unsanitized output into SQL / HTML</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">OWASP-LLM05:Improper-Output-Handling</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-OUT-001</code><span class="rttl">Model output flows into a shell/interpreter</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM05:Improper-Output-Handling</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-OUT-002</code><span class="rttl">Unsanitized output into SQL / HTML</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">OWASP-LLM05:Improper-Output-Handling</span></span></div>
 </div></div>
-<div class="cat">
+<div class="cat" data-s="permission overreach 1 tools: * , unrestricted bash(*), silent grants afw-perm-* over-broad tool / permission grant varies owasp-llm06:excessive-agency" data-sev="v">
 <div class="cat-head"><h3>Permission overreach</h3><span class="cat-count">1</span></div>
 <p class="cat-desc">tools:"*", unrestricted Bash(*), silent grants</p>
 <div class="rule-list">
-<div class="rule"><code class="rid">AFW-PERM-*</code><span class="rttl">Over-broad tool / permission grant</span><span class="sev v">varies</span><span class="refs"><span class="ref">OWASP-LLM06:Excessive-Agency</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-PERM-*</code><span class="rttl">Over-broad tool / permission grant</span><span class="sev v">varies</span><span class="refs"><span class="ref">OWASP-LLM06:Excessive-Agency</span></span></div>
 </div></div>
-<div class="cat">
+<div class="cat" data-s="install hooks 1 silent setup scripts that run on install afw-hook-* silent install / setup hook varies slsa:build-integrity" data-sev="v">
 <div class="cat-head"><h3>Install hooks</h3><span class="cat-count">1</span></div>
 <p class="cat-desc">Silent setup scripts that run on install</p>
 <div class="rule-list">
-<div class="rule"><code class="rid">AFW-HOOK-*</code><span class="rttl">Silent install / setup hook</span><span class="sev v">varies</span><span class="refs"><span class="ref">SLSA:Build-Integrity</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-HOOK-*</code><span class="rttl">Silent install / setup hook</span><span class="sev v">varies</span><span class="refs"><span class="ref">SLSA:Build-Integrity</span></span></div>
 </div></div>
-<div class="cat">
+<div class="cat" data-s="typosquatting 1 homoglyph / one-edit look-alike names afw-sqt-* homoglyph / near-miss look-alike name varies mitre-atlas:initial-access" data-sev="v">
 <div class="cat-head"><h3>Typosquatting</h3><span class="cat-count">1</span></div>
 <p class="cat-desc">Homoglyph / one-edit look-alike names</p>
 <div class="rule-list">
-<div class="rule"><code class="rid">AFW-SQT-*</code><span class="rttl">Homoglyph / near-miss look-alike name</span><span class="sev v">varies</span><span class="refs"><span class="ref">MITRE-ATLAS:Initial-Access</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-SQT-*</code><span class="rttl">Homoglyph / near-miss look-alike name</span><span class="sev v">varies</span><span class="refs"><span class="ref">MITRE-ATLAS:Initial-Access</span></span></div>
 </div></div>
-<div class="cat">
+<div class="cat" data-s="excessive agency 3 user input driving code exec; unscoped agent afw-agency-001 user input drives code execution critical owasp-llm06:excessive-agency owasp-asi05:unexpected-code-execution owasp-asi02:tool-misuse-and-exploitation afw-agency-002 agent exposes a code-execution/shell tool high owasp-llm06:excessive-agency owasp-asi05:unexpected-code-execution owasp-asi02:tool-misuse-and-exploitation afw-agency-003 system prompt grants unrestricted scope medium owasp-llm06:excessive-agency owasp-asi02:tool-misuse-and-exploitation" data-sev="c h m">
 <div class="cat-head"><h3>Excessive agency</h3><span class="cat-count">3</span></div>
 <p class="cat-desc">User input driving code exec; unscoped agent</p>
 <div class="rule-list">
-<div class="rule"><code class="rid">AFW-AGENCY-001</code><span class="rttl">User input drives code execution</span><span class="sev c">CRITICAL</span><span class="refs"><span class="ref">OWASP-LLM06:Excessive-Agency</span><span class="ref">OWASP-ASI05:Unexpected-Code-Execution</span><span class="ref">OWASP-ASI02:Tool-Misuse-and-Exploitation</span></span></div>
-<div class="rule"><code class="rid">AFW-AGENCY-002</code><span class="rttl">Agent exposes a code-execution/shell tool</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM06:Excessive-Agency</span><span class="ref">OWASP-ASI05:Unexpected-Code-Execution</span><span class="ref">OWASP-ASI02:Tool-Misuse-and-Exploitation</span></span></div>
-<div class="rule"><code class="rid">AFW-AGENCY-003</code><span class="rttl">System prompt grants unrestricted scope</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">OWASP-LLM06:Excessive-Agency</span><span class="ref">OWASP-ASI02:Tool-Misuse-and-Exploitation</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-AGENCY-001</code><span class="rttl">User input drives code execution</span><span class="sev c">CRITICAL</span><span class="refs"><span class="ref">OWASP-LLM06:Excessive-Agency</span><span class="ref">OWASP-ASI05:Unexpected-Code-Execution</span><span class="ref">OWASP-ASI02:Tool-Misuse-and-Exploitation</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-AGENCY-002</code><span class="rttl">Agent exposes a code-execution/shell tool</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM06:Excessive-Agency</span><span class="ref">OWASP-ASI05:Unexpected-Code-Execution</span><span class="ref">OWASP-ASI02:Tool-Misuse-and-Exploitation</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-AGENCY-003</code><span class="rttl">System prompt grants unrestricted scope</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">OWASP-LLM06:Excessive-Agency</span><span class="ref">OWASP-ASI02:Tool-Misuse-and-Exploitation</span></span></div>
 </div></div>
-<div class="cat">
+<div class="cat" data-s="broken authorization 1 action before the quota/authz check (toctou) afw-authz-* check-after-act / client-only limit (business logic) varies owasp-agentic:identity-and-privilege-abuse" data-sev="v">
 <div class="cat-head"><h3>Broken authorization</h3><span class="cat-count">1</span></div>
 <p class="cat-desc">Action before the quota/authz check (TOCTOU)</p>
 <div class="rule-list">
-<div class="rule"><code class="rid">AFW-AUTHZ-*</code><span class="rttl">Check-after-act / client-only limit (business logic)</span><span class="sev v">varies</span><span class="refs"><span class="ref">OWASP-Agentic:Identity-and-Privilege-Abuse</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-AUTHZ-*</code><span class="rttl">Check-after-act / client-only limit (business logic)</span><span class="sev v">varies</span><span class="refs"><span class="ref">OWASP-Agentic:Identity-and-Privilege-Abuse</span></span></div>
 </div></div>
-<div class="cat">
+<div class="cat" data-s="rag / vector-store poisoning 2 untrusted content indexed for retrieval afw-rag-001 untrusted content written into a vector store / kb medium owasp-llm08:vector-and-embedding-weaknesses owasp-asi06:memory-and-context-poisoning afw-rag-002 unvalidated web documents indexed into rag medium owasp-llm08:vector-and-embedding-weaknesses owasp-asi06:memory-and-context-poisoning" data-sev="m">
 <div class="cat-head"><h3>RAG / vector-store poisoning</h3><span class="cat-count">2</span></div>
 <p class="cat-desc">Untrusted content indexed for retrieval</p>
 <div class="rule-list">
-<div class="rule"><code class="rid">AFW-RAG-001</code><span class="rttl">Untrusted content written into a vector store / KB</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">OWASP-LLM08:Vector-and-Embedding-Weaknesses</span><span class="ref">OWASP-ASI06:Memory-and-Context-Poisoning</span></span></div>
-<div class="rule"><code class="rid">AFW-RAG-002</code><span class="rttl">Unvalidated web documents indexed into RAG</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">OWASP-LLM08:Vector-and-Embedding-Weaknesses</span><span class="ref">OWASP-ASI06:Memory-and-Context-Poisoning</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-RAG-001</code><span class="rttl">Untrusted content written into a vector store / KB</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">OWASP-LLM08:Vector-and-Embedding-Weaknesses</span><span class="ref">OWASP-ASI06:Memory-and-Context-Poisoning</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-RAG-002</code><span class="rttl">Unvalidated web documents indexed into RAG</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">OWASP-LLM08:Vector-and-Embedding-Weaknesses</span><span class="ref">OWASP-ASI06:Memory-and-Context-Poisoning</span></span></div>
 </div></div>
-<div class="cat">
+<div class="cat" data-s="insecure inter-agent (a2a) 2 no-auth agent cards, disabled signature checks afw-a2a-001 agent-to-agent endpoint declared without authentication high owasp-asi07:insecure-inter-agent-communication owasp-asi03:identity-and-privilege-abuse afw-a2a-002 inter-agent identity/signature verification disabled high owasp-asi07:insecure-inter-agent-communication owasp-asi03:identity-and-privilege-abuse" data-sev="h">
 <div class="cat-head"><h3>Insecure inter-agent (A2A)</h3><span class="cat-count">2</span></div>
 <p class="cat-desc">No-auth agent cards, disabled signature checks</p>
 <div class="rule-list">
-<div class="rule"><code class="rid">AFW-A2A-001</code><span class="rttl">Agent-to-agent endpoint declared without authentication</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-ASI07:Insecure-Inter-Agent-Communication</span><span class="ref">OWASP-ASI03:Identity-and-Privilege-Abuse</span></span></div>
-<div class="rule"><code class="rid">AFW-A2A-002</code><span class="rttl">Inter-agent identity/signature verification disabled</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-ASI07:Insecure-Inter-Agent-Communication</span><span class="ref">OWASP-ASI03:Identity-and-Privilege-Abuse</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-A2A-001</code><span class="rttl">Agent-to-agent endpoint declared without authentication</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-ASI07:Insecure-Inter-Agent-Communication</span><span class="ref">OWASP-ASI03:Identity-and-Privilege-Abuse</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-A2A-002</code><span class="rttl">Inter-agent identity/signature verification disabled</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-ASI07:Insecure-Inter-Agent-Communication</span><span class="ref">OWASP-ASI03:Identity-and-Privilege-Abuse</span></span></div>
 </div></div>
-<div class="cat">
+<div class="cat" data-s="rug pulls (stateful) 1 files/tools/permissions changed since baseline afw-drift-* baseline drift / rug pull (--baseline) varies mcp:rug-pull owasp-asi03:identity-and-privilege-abuse" data-sev="v">
 <div class="cat-head"><h3>Rug pulls (stateful)</h3><span class="cat-count">1</span></div>
 <p class="cat-desc">Files/tools/permissions changed since baseline</p>
 <div class="rule-list">
-<div class="rule"><code class="rid">AFW-DRIFT-*</code><span class="rttl">Baseline drift / rug pull (--baseline)</span><span class="sev v">varies</span><span class="refs"><span class="ref">MCP:Rug-Pull</span><span class="ref">OWASP-ASI03:Identity-and-Privilege-Abuse</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-DRIFT-*</code><span class="rttl">Baseline drift / rug pull (--baseline)</span><span class="sev v">varies</span><span class="refs"><span class="ref">MCP:Rug-Pull</span><span class="ref">OWASP-ASI03:Identity-and-Privilege-Abuse</span></span></div>
 </div></div>
-<div class="cat">
+<div class="cat" data-s="weak provenance 1 unsigned / unattested → lower trust tier afw-prov-* provenance / trust tier info slsa:provenance-and-integrity slsa:unsigned-artifact" data-sev="i">
 <div class="cat-head"><h3>Weak provenance</h3><span class="cat-count">1</span></div>
 <p class="cat-desc">Unsigned / unattested → lower trust tier</p>
 <div class="rule-list">
-<div class="rule"><code class="rid">AFW-PROV-*</code><span class="rttl">Provenance / trust tier</span><span class="sev i">INFO</span><span class="refs"><span class="ref">SLSA:Provenance-and-Integrity</span><span class="ref">SLSA:Unsigned-Artifact</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-PROV-*</code><span class="rttl">Provenance / trust tier</span><span class="sev i">INFO</span><span class="refs"><span class="ref">SLSA:Provenance-and-Integrity</span><span class="ref">SLSA:Unsigned-Artifact</span></span></div>
 </div></div>
-<div class="cat">
+<div class="cat" data-s="known-bad iocs 1 name/hash/domain/signer on a threat-intel feed afw-ioc-* threat-intel / ioc match, incl. slopsquatting (--intel) varies threat-intel:known-malicious-ioc threat-intel:revoked-signer" data-sev="v">
 <div class="cat-head"><h3>Known-bad IoCs</h3><span class="cat-count">1</span></div>
 <p class="cat-desc">Name/hash/domain/signer on a threat-intel feed</p>
 <div class="rule-list">
-<div class="rule"><code class="rid">AFW-IOC-*</code><span class="rttl">Threat-intel / IoC match, incl. slopsquatting (--intel)</span><span class="sev v">varies</span><span class="refs"><span class="ref">Threat-Intel:Known-Malicious-IoC</span><span class="ref">Threat-Intel:Revoked-Signer</span></span></div>
+<div class="rule" data-row="1"><code class="rid">AFW-IOC-*</code><span class="rttl">Threat-intel / IoC match, incl. slopsquatting (--intel)</span><span class="sev v">varies</span><span class="refs"><span class="ref">Threat-Intel:Known-Malicious-IoC</span><span class="ref">Threat-Intel:Revoked-Signer</span></span></div>
 </div></div>
         </div>
 
@@ -544,21 +732,127 @@ guard.check_tool_call(<span class="k">"send_email"</span>, {<span class="k">"bod
 )</pre>
         <p>For non-regex logic, subclass <span class="inline">Rule</span> in <span class="inline">rules/structural.py</span> and register it. See <span class="inline">CONTRIBUTING.md</span>.</p>
 
-      </main>
+            </main>
     </div>
   </div>
 
-  <footer>
-    <div class="wrap">
-      <span class="brand"><span class="mark" aria-hidden="true"></span> AIAgentFirewall</span>
-      <div class="foot-meta">
-        <span><code>pip install AIAgentFirewall</code></span>
-        <a href="https://pypi.org/project/AIAgentFirewall/">PyPI</a>
-        <a href="https://github.com/mmedabo/agentfirewall">GitHub</a>
-        <span>MIT · v1.3.1</span>
-      </div>
+<footer>
+  <div class="wrap foot">
+    <span class="logo"><span class="glyph" aria-hidden="true"></span> AIAgentFirewall</span>
+    <div class="foot-meta">
+      <code>pip install AIAgentFirewall</code>
+      <a href="https://pypi.org/project/AIAgentFirewall/">PyPI</a>
+      <a href="https://github.com/mmedabo/agentfirewall">GitHub</a>
+      <span>MIT · v1.3.1</span>
     </div>
-  </footer>
+  </div>
+</footer>
 
+<script>
+(function(){
+  "use strict";
+  var reduce=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ambient canvas */
+  (function bg(){
+    var c=document.getElementById("bgfx"); if(!c) return;
+    var x=c.getContext("2d"),w,h,dpr,t=0,sparks=[];
+    function size(){dpr=Math.min(window.devicePixelRatio||1,2);w=c.clientWidth;h=c.clientHeight;
+      c.width=w*dpr;c.height=h*dpr;x.setTransform(dpr,0,0,dpr,0,0);}
+    function seed(){sparks=[];var n=Math.min(22,Math.round(w*h/62000));
+      for(var i=0;i<n;i++)sparks.push({x:Math.random()*w,y:Math.random()*h,v:.09+Math.random()*.35,
+        r:.5+Math.random()*1,c:Math.random()>.55?"0,243,255":"112,0,255"});}
+    function draw(){
+      x.clearRect(0,0,w,h);
+      var g=64,off=reduce?0:(t*.13)%g;
+      x.lineWidth=1;x.strokeStyle="rgba(120,140,190,.045)";x.beginPath();
+      for(var gx=-g+off;gx<w+g;gx+=g){x.moveTo(gx,0);x.lineTo(gx,h);}
+      for(var gy=-g+off;gy<h+g;gy+=g){x.moveTo(0,gy);x.lineTo(w,gy);}
+      x.stroke();
+      for(var i=0;i<sparks.length;i++){var s=sparks[i];
+        if(!reduce){s.y-=s.v;if(s.y<-6){s.y=h+6;s.x=Math.random()*w;}}
+        x.beginPath();x.fillStyle="rgba("+s.c+",.4)";x.shadowBlur=7;x.shadowColor="rgba("+s.c+",.75)";
+        x.arc(s.x,s.y,s.r,0,6.283);x.fill();x.shadowBlur=0;}
+      t++;requestAnimationFrame(draw);
+    }
+    size();seed();
+    window.addEventListener("resize",function(){size();seed();},{passive:true});
+    requestAnimationFrame(draw);
+  })();
+
+  var nav=document.getElementById("nav"),prog=document.getElementById("prog");
+  function onScroll(){
+    nav.classList.toggle("stuck",window.scrollY>40);
+    var d=document.documentElement.scrollHeight-window.innerHeight;
+    prog.style.width=(d>0?(window.scrollY/d)*100:0)+"%";
+  }
+  window.addEventListener("scroll",onScroll,{passive:true});
+  window.addEventListener("resize",onScroll,{passive:true});
+  onScroll();
+
+  /* scrollspy — highlight the section you're reading */
+  var links=Array.prototype.slice.call(document.querySelectorAll(".sidenav a")),
+      targets=links.map(function(a){return document.querySelector(a.getAttribute("href"));}).filter(Boolean);
+  function spy(){
+    var best=null,bestTop=-Infinity;
+    targets.forEach(function(t){
+      var top=t.getBoundingClientRect().top-110;
+      if(top<=0&&top>bestTop){bestTop=top;best=t;}
+    });
+    links.forEach(function(a){
+      a.classList.toggle("active", !!best && a.getAttribute("href")==="#"+best.id);
+    });
+  }
+  window.addEventListener("scroll",spy,{passive:true}); spy();
+
+  /* live catalogue filter */
+  var q=document.getElementById("q"),
+      chips=Array.prototype.slice.call(document.querySelectorAll(".fchip")),
+      cats=Array.prototype.slice.call(document.querySelectorAll(".cat")),
+      fcount=document.getElementById("fcount"),
+      noresult=document.getElementById("noresult"),
+      sevOn={};
+
+  function apply(){
+    var term=(q&&q.value||"").trim().toLowerCase(),
+        wanted=Object.keys(sevOn).filter(function(k){return sevOn[k];}),
+        shownCats=0, shownRules=0;
+
+    cats.forEach(function(cat){
+      var hay=cat.getAttribute("data-s")||"",
+          rows=Array.prototype.slice.call(cat.querySelectorAll(".rule")),
+          any=false;
+
+      rows.forEach(function(r){
+        var rt=r.textContent.toLowerCase(),
+            rsev=(r.querySelector(".sev")||{}).className||"",
+            sevKey=(rsev.split(" ")[1]||""),
+            okTerm=!term||rt.indexOf(term)>-1||hay.indexOf(term)>-1,
+            okSev=!wanted.length||wanted.indexOf(sevKey)>-1;
+        var show=okTerm&&okSev;
+        r.hidden=!show;
+        if(show){any=true;shownRules++;}
+      });
+
+      cat.hidden=!any;
+      if(any) shownCats++;
+    });
+
+    if(fcount) fcount.innerHTML="<b>"+shownCats+"</b> categories · <b>"+shownRules+"</b> detections";
+    if(noresult) noresult.classList.toggle("on", shownRules===0);
+  }
+
+  if(q) q.addEventListener("input",apply);
+  chips.forEach(function(ch){
+    ch.addEventListener("click",function(){
+      var k=ch.getAttribute("data-sev");
+      sevOn[k]=!sevOn[k];
+      ch.setAttribute("aria-pressed",sevOn[k]?"true":"false");
+      apply();
+    });
+  });
+  apply();
+})();
+</script>
 </body>
 </html>

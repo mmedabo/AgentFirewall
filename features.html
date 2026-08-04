@@ -5,316 +5,237 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <title>AIAgentFirewall — Feature Field Guide</title>
+<meta name="description" content="Every AIAgentFirewall capability: why it's needed, real use cases, and honest pros and cons.">
 <style>
 /* Self-hosted so the site makes zero third-party requests.
    Inter & Space Grotesk — SIL Open Font License 1.1, latin subset. */
-@font-face{
-  font-family:'Inter';font-style:normal;font-weight:400 700;font-display:swap;
-  src:url('fonts/inter-var.woff2') format('woff2');
+@font-face{font-family:'Inter';font-style:normal;font-weight:400 700;font-display:swap;src:url('fonts/inter-var.woff2') format('woff2')}
+@font-face{font-family:'Space Grotesk';font-style:normal;font-weight:500 700;font-display:swap;src:url('fonts/space-grotesk-var.woff2') format('woff2')}
+
+:root{
+  --bg:#0a0a0c;--bg-2:#14141a;--surface:#101015;--line:#1e1e28;--line-hot:#2a2a38;
+  --cyan:#00f3ff;--violet:#7000ff;
+  --allow:#00ffa3;--warn:#ffc400;--block:#ff2e63;
+  --text:#eceef4;--text-dim:#9aa0b4;--text-mute:#5f6478;
+  --glow-cyan:0 0 24px rgba(0,243,255,.35);
+  --font-display:'Space Grotesk',ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --font-body:'Inter',ui-sans-serif,system-ui,-apple-system,sans-serif;
+  --font-mono:ui-monospace,'JetBrains Mono','SF Mono',Menlo,Consolas,monospace;
+  --maxw:1200px;--ease:cubic-bezier(.22,1,.36,1);
 }
-@font-face{
-  font-family:'Space Grotesk';font-style:normal;font-weight:500 700;font-display:swap;
-  src:url('fonts/space-grotesk-var.woff2') format('woff2');
-}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);
+     line-height:1.62;font-size:16.5px;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+canvas{display:block}
+code{font-family:var(--font-mono)}
+::selection{background:rgba(0,243,255,.28);color:#fff}
 
-  :root{
-    /* light theme (base) */
-    --bg:#F4F7F7;
-    --bg-2:#FFFFFF;
-    --panel:#FBFDFD;
-    --ink:#14202A;
-    --ink-soft:#33424E;
-    --muted:#5C6B76;
-    --line:#DBE4E6;
-    --line-strong:#C4D1D3;
-    --accent:#0C8A92;
-    --accent-ink:#075056;
-    --accent-tint:#E2F1F1;
-    --allow:#1E8A4C;
-    --warn:#A9741A;
-    --block:#BE3A32;
-    --allow-tint:#E7F3EB;
-    --block-tint:#F7E9E8;
-    --shadow:0 1px 2px rgba(20,32,42,.06),0 8px 24px -12px rgba(20,32,42,.18);
-    --grid:rgba(12,138,146,.09);
-    --font-sans:'Inter',system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --font-display:'Space Grotesk','Inter',system-ui,sans-serif;
-    --font-mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
-    --maxw:1120px;
-  }
-  @media (prefers-color-scheme:dark){
-    :root{
-      --bg:#0A0F16;
-      --bg-2:#121B24;
-      --panel:#0F1720;
-      --ink:#E7EEF3;
-      --ink-soft:#C2CDD6;
-      --muted:#8B99A6;
-      --line:#233039;
-      --line-strong:#31414C;
-      --accent:#34C7CD;
-      --accent-ink:#8EE6E9;
-      --accent-tint:#0F2429;
-      --allow:#48BB6B;
-      --warn:#D3A03C;
-      --block:#E56A61;
-      --allow-tint:#112017;
-      --block-tint:#251615;
-      --shadow:0 1px 0 rgba(255,255,255,.02),0 18px 40px -20px rgba(0,0,0,.7);
-      --grid:rgba(52,199,205,.08);
-    }
-  }
-  :root[data-theme="light"]{
-    --bg:#F4F7F7;--bg-2:#FFFFFF;--panel:#FBFDFD;--ink:#14202A;--ink-soft:#33424E;--muted:#5C6B76;
-    --line:#DBE4E6;--line-strong:#C4D1D3;--accent:#0C8A92;--accent-ink:#075056;--accent-tint:#E2F1F1;
-    --allow:#1E8A4C;--warn:#A9741A;--block:#BE3A32;--allow-tint:#E7F3EB;--block-tint:#F7E9E8;
-    --shadow:0 1px 2px rgba(20,32,42,.06),0 8px 24px -12px rgba(20,32,42,.18);--grid:rgba(12,138,146,.09);
-  }
-  :root[data-theme="dark"]{
-    --bg:#0A0F16;--bg-2:#121B24;--panel:#0F1720;--ink:#E7EEF3;--ink-soft:#C2CDD6;--muted:#8B99A6;
-    --line:#233039;--line-strong:#31414C;--accent:#34C7CD;--accent-ink:#8EE6E9;--accent-tint:#0F2429;
-    --allow:#48BB6B;--warn:#D3A03C;--block:#E56A61;--allow-tint:#112017;--block-tint:#251615;
-    --shadow:0 1px 0 rgba(255,255,255,.02),0 18px 40px -20px rgba(0,0,0,.7);--grid:rgba(52,199,205,.08);
-  }
+/* ambient */
+#bgfx{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.6}
+.vignette{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(85% 50% at 50% 0%,rgba(112,0,255,.14),transparent 60%),
+             radial-gradient(70% 45% at 88% 18%,rgba(0,243,255,.08),transparent 58%),
+             radial-gradient(120% 90% at 50% 112%,rgba(0,0,0,.86),transparent 55%)}
+.scanlines{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:.3;
+  background:repeating-linear-gradient(180deg,rgba(255,255,255,.026) 0 1px,transparent 1px 3px)}
+.wrap{width:100%;max-width:var(--maxw);margin:0 auto;padding:0 26px;position:relative;z-index:5}
 
-  *{box-sizing:border-box}
-  html{scroll-behavior:smooth}
-  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
-  body{margin:0}
-  .page{
-    background:var(--bg);color:var(--ink);
-    font-family:var(--font-sans);
-    line-height:1.6;
-    -webkit-font-smoothing:antialiased;
-    font-size:16.5px;
-  }
-  a{color:inherit}
-  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+/* scroll progress */
+.progress{position:fixed;top:0;left:0;height:2px;z-index:120;width:0%;
+  background:linear-gradient(90deg,var(--cyan),var(--violet));box-shadow:0 0 12px rgba(0,243,255,.6)}
 
-  /* ---------- top bar ---------- */
-  .topbar{
-    position:sticky;top:0;z-index:50;
-    backdrop-filter:saturate(140%) blur(10px);
-    background:color-mix(in srgb,var(--bg) 82%,transparent);
-    border-bottom:1px solid var(--line);
-  }
-  .topbar .wrap{display:flex;align-items:center;gap:18px;min-height:58px}
-  .brand{font-family:var(--font-display);display:flex;align-items:center;gap:10px;font-weight:750;letter-spacing:-.01em;white-space:nowrap}
-  .brand .mark{
-    width:22px;height:22px;flex:none;border-radius:5px;
-    background:linear-gradient(150deg,var(--accent),color-mix(in srgb,var(--accent) 55%,var(--ink)));
-    box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 50%,transparent);
-  }
-  .brand small{font-family:var(--font-mono);font-weight:600;font-size:.7rem;color:var(--muted);letter-spacing:.02em}
-  .navlinks{margin-left:auto;display:flex;gap:4px;flex-wrap:wrap}
-  .navlinks a{
-    font-size:.82rem;color:var(--muted);text-decoration:none;padding:6px 10px;border-radius:7px;
-    font-weight:600;transition:color .15s,background .15s;
-  }
-  .navlinks a:hover{color:var(--ink);background:var(--accent-tint)}
-  .navlinks a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-  @media (max-width:820px){.navlinks{display:none}}
-  .layers{margin-left:auto;display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg-2)}
-  .layers a{padding:8px 13px;font-size:.8rem;font-weight:650;color:var(--muted);text-decoration:none;display:flex;gap:8px;align-items:center;border-right:1px solid var(--line);transition:color .15s,background .15s}
-  .layers a:last-child{border-right:0}
-  .layers a:hover{color:var(--ink)}
-  .layers a[aria-current="page"]{background:var(--accent-tint);color:var(--accent-ink)}
-  .layers a .ln{font-family:var(--font-mono);opacity:.65;font-size:.74rem}
-  .layers a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
-  @media (max-width:680px){.layers a .lt{display:none}.layers a{padding:8px 11px}}
+/* nav */
+.nav{position:fixed;top:18px;left:50%;transform:translateX(-50%);z-index:100;
+  width:calc(100% - 36px);max-width:var(--maxw);display:flex;align-items:center;gap:18px;
+  padding:11px 14px 11px 18px;border-radius:16px;border:1px solid transparent;background:transparent;
+  transition:background .45s var(--ease),border-color .45s var(--ease),box-shadow .45s var(--ease),top .45s var(--ease),padding .45s var(--ease)}
+.nav.stuck{top:12px;padding:9px 12px 9px 16px;background:rgba(10,10,12,.74);
+  backdrop-filter:blur(16px) saturate(150%);-webkit-backdrop-filter:blur(16px) saturate(150%);
+  border-color:var(--line);box-shadow:0 10px 40px -18px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.04)}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:700;letter-spacing:-.02em;font-size:.98rem;white-space:nowrap}
+.logo .glyph{width:24px;height:24px;border-radius:7px;flex:none;position:relative;
+  background:linear-gradient(140deg,var(--cyan),var(--violet));box-shadow:var(--glow-cyan)}
+.logo .glyph::after{content:"";position:absolute;inset:5px;border-radius:3px;background:var(--bg)}
+.layers{margin-left:auto;display:inline-flex;border:1px solid var(--line);border-radius:11px;overflow:hidden;background:rgba(20,20,26,.6)}
+.layers a{padding:8px 13px;font-size:.79rem;font-weight:600;color:var(--text-mute);display:flex;gap:8px;align-items:center;
+  border-right:1px solid var(--line);white-space:nowrap;transition:color .25s var(--ease),background .25s var(--ease)}
+.layers a:last-child{border-right:0}
+.layers a:hover{color:var(--text);background:rgba(255,255,255,.03)}
+.layers a[aria-current="page"]{color:var(--cyan);background:rgba(0,243,255,.09)}
+.layers a .ln{font-family:var(--font-mono);opacity:.6;font-size:.72rem}
+.layers a:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px}
+@media (max-width:640px){.layers a .lt{display:none}.layers a{padding:8px 11px}}
 
-  /* ---------- hero ---------- */
-  .hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
-  .hero::before{
-    content:"";position:absolute;inset:0;pointer-events:none;
-    background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
-    background-size:34px 34px;
-    -webkit-mask-image:radial-gradient(120% 90% at 78% -10%,#000 0%,transparent 62%);
-    mask-image:radial-gradient(120% 90% at 78% -10%,#000 0%,transparent 62%);
-  }
-  .hero .wrap{position:relative;padding:64px 24px 56px}
-  .eyebrow{
-    font-family:var(--font-mono);font-size:.74rem;letter-spacing:.16em;text-transform:uppercase;
-    color:var(--accent-ink);font-weight:650;display:inline-flex;align-items:center;gap:8px;
-  }
-  .eyebrow::before{content:"";width:26px;height:1px;background:var(--accent)}
-  h1{font-family:var(--font-display);
-    font-size:clamp(2.3rem,5.4vw,3.6rem);line-height:1.03;letter-spacing:-.03em;font-weight:800;
-    margin:.5em 0 .28em;max-width:16ch;text-wrap:balance;
-  }
-  h1 .fw{color:var(--accent)}
-  .lede{font-size:clamp(1.05rem,2vw,1.24rem);color:var(--ink-soft);max-width:60ch;margin:0}
-  .lede b{color:var(--ink);font-weight:650}
-  .verdicts{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}
-  .stamp{
-    font-family:var(--font-mono);font-size:.72rem;font-weight:700;letter-spacing:.08em;
-    padding:6px 11px;border-radius:6px;border:1px solid;display:inline-flex;align-items:center;gap:7px;
-  }
-  .stamp::before{content:"";width:7px;height:7px;border-radius:50%}
-  .stamp.a{color:var(--allow);border-color:color-mix(in srgb,var(--allow) 40%,var(--line));background:var(--allow-tint)}
-  .stamp.a::before{background:var(--allow)}
-  .stamp.w{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 40%,var(--line));background:color-mix(in srgb,var(--warn) 12%,var(--bg-2))}
-  .stamp.w::before{background:var(--warn)}
-  .stamp.b{color:var(--block);border-color:color-mix(in srgb,var(--block) 40%,var(--line));background:var(--block-tint)}
-  .stamp.b::before{background:var(--block)}
+/* page head */
+.phead{padding:150px 0 40px;position:relative}
+.sec-tag{font-family:var(--font-mono);font-size:.71rem;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--violet);font-weight:650;display:inline-flex;align-items:center;gap:11px}
+.sec-tag::before{content:"";width:28px;height:1px;background:linear-gradient(90deg,var(--violet),transparent)}
+.phead h1{font-family:var(--font-display);font-size:clamp(2.4rem,6vw,4.2rem);line-height:.98;
+  letter-spacing:-.04em;font-weight:700;margin:.32em 0 .3em;text-wrap:balance;max-width:18ch}
+.phead h1 .em{background:linear-gradient(180deg,#fff 10%,var(--cyan) 60%,var(--violet) 130%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 22px rgba(0,243,255,.25))}
+.phead .lede{color:var(--text-dim);font-size:clamp(1rem,2vw,1.16rem);max-width:62ch;margin:0}
+.phead .lede b{color:var(--text);font-weight:600}
 
-  .stats{
-    display:grid;grid-template-columns:repeat(5,1fr);gap:1px;margin-top:40px;
-    background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;
-  }
-  .stat{background:var(--bg-2);padding:18px 16px}
-  .stat .n{font-size:1.5rem;font-weight:780;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-  .stat .l{font-size:.76rem;color:var(--muted);margin-top:2px;font-weight:600}
-  @media (max-width:720px){.stats{grid-template-columns:repeat(2,1fr)}.stat:last-child{grid-column:1/-1}}
+/* legend chips */
+.legend{display:flex;gap:9px;flex-wrap:wrap;margin-top:26px}
+.lg{font-family:var(--font-mono);font-size:.72rem;font-weight:600;letter-spacing:.05em;
+  padding:6px 12px;border-radius:8px;border:1px solid;display:inline-flex;align-items:center;gap:8px}
+.lg::before{content:"";width:6px;height:6px;border-radius:50%}
+.lg.p{color:var(--allow);border-color:rgba(0,255,163,.3);background:rgba(0,255,163,.06)}
+.lg.p::before{background:var(--allow);box-shadow:0 0 8px var(--allow)}
+.lg.c{color:var(--block);border-color:rgba(255,46,99,.3);background:rgba(255,46,99,.06)}
+.lg.c::before{background:var(--block);box-shadow:0 0 8px var(--block)}
+.lg.u{color:var(--cyan);border-color:rgba(0,243,255,.3);background:rgba(0,243,255,.06)}
+.lg.u::before{background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
 
-  /* ---------- generic section ---------- */
-  section{padding:60px 0}
-  .sec-head{max-width:64ch}
-  .sec-head h2{font-family:var(--font-display);
-    font-size:clamp(1.5rem,3vw,2rem);letter-spacing:-.02em;font-weight:780;margin:.35em 0 .3em;text-wrap:balance;
-  }
-  .sec-head p{color:var(--muted);margin:0;font-size:1.02rem}
+/* sections */
+section{position:relative;z-index:5;padding:64px 0}
+.tier{border-top:1px solid var(--line)}
+.tier-head{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:4px}
+.tier-num{font-family:var(--font-mono);font-size:.75rem;color:var(--cyan);font-weight:700;letter-spacing:.14em}
+.tier-head h2,.sec-head h2{font-family:var(--font-display);font-weight:700;letter-spacing:-.03em;
+  font-size:clamp(1.7rem,3.6vw,2.4rem);line-height:1.04;margin:.3em 0 .25em;text-wrap:balance;max-width:20ch}
+.tier-head h2{margin:0}
+.tier-sub,.sec-head p{color:var(--text-dim);margin:6px 0 0;font-size:1.02rem;max-width:66ch}
 
-  /* ---------- pipeline ---------- */
-  .pipe-scroll{overflow-x:auto;margin-top:34px;padding-bottom:6px}
-  .pipe{display:flex;align-items:stretch;gap:0;min-width:760px}
-  .node{
-    flex:1;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;
-    position:relative;box-shadow:var(--shadow);
-  }
-  .node .k{font-family:var(--font-mono);font-size:.72rem;color:var(--accent-ink);font-weight:650;letter-spacing:.04em}
-  .node .t{font-weight:700;margin-top:5px;font-size:.98rem}
-  .node .d{color:var(--muted);font-size:.82rem;margin-top:3px}
-  .arrow{display:flex;align-items:center;justify-content:center;width:34px;color:var(--line-strong);flex:none;font-size:1.2rem}
-  .arrow span{transform:translateY(-1px)}
+.rv{opacity:0;transform:translateY(24px);transition:opacity .75s var(--ease),transform .75s var(--ease)}
+.rv.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}}
 
-  .dirs{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:26px}
-  @media (max-width:720px){.dirs{grid-template-columns:1fr}}
-  .dir{border:1px solid var(--line);border-radius:12px;padding:20px 22px;background:var(--panel)}
-  .dir h3{margin:0 0 6px;font-size:1.05rem;display:flex;align-items:center;gap:9px}
-  .dir h3 .tag{font-family:var(--font-mono);font-size:.66rem;padding:3px 7px;border-radius:5px;background:var(--accent-tint);color:var(--accent-ink);font-weight:700;letter-spacing:.04em}
-  .dir p{margin:0;color:var(--ink-soft);font-size:.95rem}
+/* pipeline */
+.pipe-scroll{overflow-x:auto;margin-top:32px;padding-bottom:8px}
+.pipe{display:flex;align-items:stretch;min-width:780px}
+.node{flex:1;background:linear-gradient(165deg,rgba(255,255,255,.04),rgba(255,255,255,.008));
+  border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.node .k{font-family:var(--font-mono);font-size:.7rem;color:var(--cyan);font-weight:650;letter-spacing:.06em}
+.node .t{font-family:var(--font-display);font-weight:650;margin-top:5px;font-size:1rem}
+.node .d{color:var(--text-mute);font-size:.81rem;margin-top:3px}
+.arrow{display:flex;align-items:center;justify-content:center;width:34px;color:var(--line-hot);flex:none;font-size:1.1rem}
 
-  /* ---------- tier band ---------- */
-  .tier{border-top:1px solid var(--line)}
-  .tier-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
-  .tier-num{font-family:var(--font-mono);font-size:.8rem;color:var(--accent-ink);font-weight:700;letter-spacing:.06em}
-  .tier-head h2{font-family:var(--font-display);font-size:clamp(1.4rem,2.7vw,1.85rem);letter-spacing:-.02em;font-weight:780;margin:0}
-  .tier-sub{color:var(--muted);margin:2px 0 0;font-size:.98rem;max-width:70ch}
+/* direction cards */
+.dirs{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:26px}
+@media (max-width:760px){.dirs{grid-template-columns:1fr}}
+.dir{border:1px solid var(--line);border-radius:15px;padding:22px 24px;
+  background:linear-gradient(165deg,rgba(255,255,255,.035),rgba(255,255,255,.006))}
+.dir h3{font-family:var(--font-display);margin:0 0 7px;font-size:1.08rem;display:flex;align-items:center;gap:10px;font-weight:660}
+.dir h3 .tag{font-family:var(--font-mono);font-size:.65rem;padding:3px 8px;border-radius:6px;
+  background:rgba(0,243,255,.1);color:var(--cyan);font-weight:700;letter-spacing:.08em;border:1px solid rgba(0,243,255,.22)}
+.dir p{margin:0;color:var(--text-dim);font-size:.94rem}
 
-  .cards{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:28px}
-  @media (max-width:860px){.cards{grid-template-columns:1fr}}
-  .card{
-    background:var(--bg-2);border:1px solid var(--line);border-radius:14px;padding:22px 22px 20px;
-    box-shadow:var(--shadow);display:flex;flex-direction:column;gap:14px;
-    transition:transform .18s ease,border-color .18s ease;
-  }
-  .card:hover{transform:translateY(-2px);border-color:var(--line-strong)}
-  @media (prefers-reduced-motion:reduce){.card:hover{transform:none}}
-  .card-top{display:flex;flex-direction:column;gap:9px}
-  .card h3{font-family:var(--font-display);margin:0;font-size:1.16rem;letter-spacing:-.015em;font-weight:760;line-height:1.2}
-  .cmd{
-    font-family:var(--font-mono);font-size:.78rem;color:var(--ink-soft);
-    background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:6px 9px;
-    align-self:flex-start;max-width:100%;overflow-x:auto;white-space:nowrap;
-  }
-  .cmd b{color:var(--accent-ink);font-weight:700}
-  .why{margin:0;color:var(--ink-soft);font-size:.94rem}
-  .block-label{
-    font-family:var(--font-mono);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;
-    color:var(--muted);font-weight:650;margin-bottom:7px;display:block;
-  }
-  .uses{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
-  .uses li{position:relative;padding-left:18px;font-size:.9rem;color:var(--ink-soft)}
-  .uses li::before{content:"";position:absolute;left:2px;top:.62em;width:6px;height:6px;border-radius:1px;background:var(--accent);transform:rotate(45deg)}
+/* feature cards (bento) */
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:30px;align-items:start}
+@media (max-width:880px){.cards{grid-template-columns:1fr}}
+.card{position:relative;isolation:isolate;overflow:hidden;
+  background:linear-gradient(165deg,rgba(255,255,255,.04),rgba(255,255,255,.007));
+  border:1px solid var(--line);border-radius:18px;padding:24px;
+  display:flex;flex-direction:column;gap:15px;
+  transition:border-color .4s var(--ease),transform .4s var(--ease)}
+.card::before{content:"";position:absolute;inset:-1px;border-radius:inherit;z-index:-1;opacity:0;
+  background:radial-gradient(440px circle at var(--mx,50%) var(--my,50%),rgba(0,243,255,.15),transparent 44%);
+  transition:opacity .4s var(--ease)}
+.card:hover{border-color:var(--line-hot);transform:translateY(-3px)}
+.card:hover::before{opacity:1}
+.card-top{display:flex;flex-direction:column;gap:10px}
+.card h3{font-family:var(--font-display);margin:0;font-size:1.2rem;letter-spacing:-.02em;font-weight:680;line-height:1.18}
+.cmd{font-family:var(--font-mono);font-size:.77rem;color:var(--text-dim);
+  background:rgba(0,0,0,.4);border:1px solid var(--line);border-radius:8px;padding:7px 10px;
+  align-self:flex-start;max-width:100%;overflow-x:auto;white-space:nowrap}
+.cmd b{color:var(--cyan);font-weight:700}
+.why{margin:0;color:var(--text-dim);font-size:.94rem}
+.why b{color:var(--text);font-weight:640}
+.block-label{font-family:var(--font-mono);font-size:.67rem;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--text-mute);font-weight:650;margin-bottom:8px;display:block}
+.uses{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:7px}
+.uses li{position:relative;padding-left:19px;font-size:.9rem;color:var(--text-dim)}
+.uses li::before{content:"";position:absolute;left:2px;top:.6em;width:6px;height:6px;border-radius:1px;
+  background:var(--cyan);transform:rotate(45deg);box-shadow:0 0 7px rgba(0,243,255,.7)}
+.uses code{font-size:.85em;color:var(--cyan)}
 
-  .pc{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:2px}
-  @media (max-width:520px){.pc{grid-template-columns:1fr}}
-  .pcbox{border:1px solid var(--line);border-radius:10px;padding:12px 13px;background:var(--panel)}
-  .pcbox.pro{border-color:color-mix(in srgb,var(--allow) 26%,var(--line))}
-  .pcbox.con{border-color:color-mix(in srgb,var(--block) 24%,var(--line))}
-  .pcbox h4{
-    margin:0 0 8px;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;font-weight:700;
-    display:flex;align-items:center;gap:7px;font-family:var(--font-mono);
-  }
-  .pro h4{color:var(--allow)}
-  .con h4{color:var(--block)}
-  .pcbox ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:7px}
-  .pcbox li{position:relative;padding-left:17px;font-size:.865rem;color:var(--ink-soft);line-height:1.45}
-  .pro li::before{content:"+";position:absolute;left:1px;top:-1px;color:var(--allow);font-weight:800;font-family:var(--font-mono)}
-  .con li::before{content:"–";position:absolute;left:1px;top:-1px;color:var(--block);font-weight:800;font-family:var(--font-mono)}
+.pc{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:540px){.pc{grid-template-columns:1fr}}
+.pcbox{border:1px solid var(--line);border-radius:12px;padding:13px 14px;background:rgba(0,0,0,.28)}
+.pcbox.pro{border-color:rgba(0,255,163,.22)}
+.pcbox.con{border-color:rgba(255,46,99,.2)}
+.pcbox h4{margin:0 0 9px;font-size:.69rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;font-family:var(--font-mono)}
+.pro h4{color:var(--allow)}
+.con h4{color:var(--block)}
+.pcbox ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.pcbox li{position:relative;padding-left:18px;font-size:.86rem;color:var(--text-dim);line-height:1.5}
+.pro li::before{content:"+";position:absolute;left:1px;top:-1px;color:var(--allow);font-weight:800;font-family:var(--font-mono)}
+.con li::before{content:"–";position:absolute;left:1px;top:-1px;color:var(--block);font-weight:800;font-family:var(--font-mono)}
+.pcbox code{font-size:.85em;color:var(--text-dim)}
 
-  /* ---------- coverage strip ---------- */
-  .cov{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px}
-  .chip{
-    font-size:.82rem;border:1px solid var(--line);border-radius:999px;padding:6px 13px;background:var(--bg-2);
-    display:inline-flex;align-items:center;gap:8px;color:var(--ink-soft);font-weight:550;
-  }
-  .chip .id{font-family:var(--font-mono);font-size:.7rem;color:var(--muted)}
+/* coverage chips */
+.cov{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font-size:.81rem;border:1px solid var(--line);border-radius:999px;padding:6px 13px;
+  background:rgba(255,255,255,.025);display:inline-flex;align-items:center;gap:8px;color:var(--text-dim)}
+.chip .id{font-family:var(--font-mono);font-size:.68rem;color:var(--cyan);opacity:.85}
 
-  /* ---------- callout ---------- */
-  .note{
-    border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;
-    background:var(--panel);padding:18px 20px;margin-top:30px;
-  }
-  .note p{margin:0;color:var(--ink-soft);font-size:.95rem}
-  .note b{color:var(--ink)}
+/* note */
+.note{border:1px solid var(--line);border-left:2px solid var(--cyan);border-radius:12px;
+  background:linear-gradient(90deg,rgba(0,243,255,.05),rgba(255,255,255,.012));padding:20px 22px;margin-top:30px}
+.note p{margin:0;color:var(--text-dim);font-size:.94rem}
+.note b{color:var(--text)}
 
-  /* ---------- footer ---------- */
-  footer{border-top:1px solid var(--line);padding:34px 0 48px;color:var(--muted)}
-  footer .wrap{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between}
-  .foot-meta{display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:.85rem}
-  .foot-meta code{font-family:var(--font-mono);background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:3px 8px;color:var(--ink-soft)}
-  .foot-meta a{color:var(--accent-ink);text-decoration:none;font-weight:600}
-  .foot-meta a:hover{text-decoration:underline}
-  a.dir{color:inherit}
-  a.dir:hover{border-color:var(--accent)}
-  a.dir:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* next layers */
+.next{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:30px}
+@media (max-width:680px){.next{grid-template-columns:1fr}}
+.nextcard{display:flex;flex-direction:column;gap:6px;border:1px solid var(--line);border-radius:16px;padding:24px;
+  background:linear-gradient(165deg,rgba(255,255,255,.04),rgba(255,255,255,.006));
+  transition:border-color .35s var(--ease),transform .35s var(--ease),box-shadow .35s var(--ease)}
+.nextcard:hover{border-color:rgba(0,243,255,.4);transform:translateY(-3px);box-shadow:0 24px 56px -34px rgba(0,243,255,.5)}
+.nextcard:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+.nextcard .ly{font-family:var(--font-mono);font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;color:var(--violet);font-weight:650}
+.nextcard h3{font-family:var(--font-display);margin:3px 0 0;font-size:1.18rem;font-weight:680}
+.nextcard p{margin:0;color:var(--text-dim);font-size:.92rem}
+.nextcard .go{margin-top:8px;color:var(--cyan);font-family:var(--font-mono);font-size:.8rem;font-weight:650}
+
+/* footer */
+footer{border-top:1px solid var(--line);padding:44px 0 56px;position:relative;z-index:5;background:rgba(8,8,10,.6)}
+.foot{display:flex;flex-wrap:wrap;gap:22px;justify-content:space-between;align-items:center}
+.foot-meta{display:flex;gap:15px;flex-wrap:wrap;align-items:center;font-family:var(--font-mono);font-size:.79rem;color:var(--text-mute)}
+.foot-meta code{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:6px;padding:3px 9px;color:var(--text-dim)}
+.foot-meta a{color:var(--cyan)}
+.foot-meta a:hover{text-decoration:underline}
 </style>
 </head>
 <body>
 
-<div class="page">
+<canvas id="bgfx" aria-hidden="true"></canvas>
+<div class="vignette" aria-hidden="true"></div>
+<div class="scanlines" aria-hidden="true"></div>
+<div class="progress" id="prog" aria-hidden="true"></div>
 
-  <div class="topbar">
-    <div class="wrap">
-      <span class="brand"><span class="mark" aria-hidden="true"></span> AIAgentFirewall</span>
-      <nav class="layers" aria-label="Documentation layers">
-        <a href="index.html"><span class="ln">01</span><span class="lt">Overview</span></a>
-        <a href="features.html" aria-current="page"><span class="ln">02</span><span class="lt">Features</span></a>
-        <a href="reference.html"><span class="ln">03</span><span class="lt">Reference</span></a>
-      </nav>
+<nav class="nav" id="nav" aria-label="Primary">
+  <span class="logo"><span class="glyph" aria-hidden="true"></span> AIAgentFirewall</span>
+  <div class="layers">
+    <a href="index.html"><span class="ln">01</span><span class="lt">Overview</span></a>
+    <a href="features.html" aria-current="page"><span class="ln">02</span><span class="lt">Features</span></a>
+    <a href="reference.html"><span class="ln">03</span><span class="lt">Reference</span></a>
+  </div>
+</nav>
+
+<header class="phead">
+  <div class="wrap">
+    <span class="sec-tag">Layer 02 · Feature field guide</span>
+    <h1>Every capability, <span class="em">and its trade-offs</span>.</h1>
+    <p class="lede">What each layer does, <b>why it's needed</b>, where you'd reach for it — and the honest limits. No feature here is described without what it costs you.</p>
+    <div class="legend" aria-hidden="true">
+      <span class="lg u">WHY IT'S NEEDED</span>
+      <span class="lg p">PROS</span>
+      <span class="lg c">CONS</span>
     </div>
   </div>
-
-  <!-- HERO -->
-  <header class="hero">
+</header>
+<section id="model">
     <div class="wrap">
-      <span class="eyebrow">Feature Field Guide</span>
-      <h1>A security <span class="fw">firewall</span> for AI agents, skills &amp; MCP servers.</h1>
-      <p class="lede">Shareable agents, skills, plugins and MCP servers arrive from people you don't know — a single markdown file or <code>setup.sh</code> can read your keys, exfiltrate secrets, or hide instructions that steer your agent. AIAgentFirewall inspects an artifact <b>before</b> it touches your machine, <b>contains</b> what runs, and <b>hardens the agents you deploy</b> — 100% local, zero required dependencies.</p>
-
-      <div class="verdicts" aria-label="Verdict model">
-        <span class="stamp a">ALLOW</span>
-        <span class="stamp w">WARN</span>
-        <span class="stamp b">BLOCK</span>
-      </div>
-
-      <div class="stats">
-        <div class="stat"><div class="n">59</div><div class="l">detections</div></div>
-        <div class="stat"><div class="n">23</div><div class="l">threat categories</div></div>
-        <div class="stat"><div class="n">4</div><div class="l">defense tiers</div></div>
-        <div class="stat"><div class="n">0</div><div class="l">required deps</div></div>
-        <div class="stat"><div class="n">MIT</div><div class="l">licensed</div></div>
-      </div>
-    </div>
-  </header>
-
-  <!-- MENTAL MODEL -->
-  <section id="model">
-    <div class="wrap">
-      <div class="sec-head">
-        <span class="eyebrow">The mental model</span>
+      <div class="sec-head rv">
+        <span class="sec-tag">The mental model</span>
         <h2>Layered like a real firewall — default-deny where it counts.</h2>
         <p>Every scan runs the same pipeline: a target becomes an artifact, rules produce findings, and a policy turns findings into a verdict you can gate on. Nothing is executed to be scanned.</p>
       </div>
@@ -346,10 +267,9 @@
     </div>
   </section>
 
-  <!-- TIER 1: PRE-INSTALL -->
-  <section id="pre-install" class="tier">
+<section id="pre-install" class="tier">
     <div class="wrap">
-      <div class="tier-head">
+      <div class="tier-head rv">
         <span class="tier-num">TIER 01 · STATIC</span>
         <h2>Pre-install inspection</h2>
       </div>
@@ -357,7 +277,7 @@
 
       <div class="cards">
 
-        <article class="card">
+        <article class="card rv">
           <div class="card-top">
             <h3>Static scanner &amp; install gate</h3>
             <div class="cmd"><b>afw</b> scan · verify · install <span>./artifact</span></div>
@@ -385,7 +305,7 @@
           </div>
         </article>
 
-        <article class="card">
+        <article class="card rv">
           <div class="card-top">
             <h3>Broad detection coverage</h3>
             <div class="cmd"><b>afw</b> rules <span># 59 detections · 23 categories</span></div>
@@ -423,17 +343,16 @@
     </div>
   </section>
 
-  <!-- TIER 2: STATEFUL -->
-  <section id="stateful" class="tier">
+<section id="stateful" class="tier">
     <div class="wrap">
-      <div class="tier-head">
+      <div class="tier-head rv">
         <span class="tier-num">TIER 02 · STATEFUL</span>
         <h2>Rug-pull defense</h2>
       </div>
       <p class="tier-sub">The attack static scanning can't see on its own: an artifact that's clean today and malicious after an update. Pin what you approved, re-check every change.</p>
 
       <div class="cards">
-        <article class="card">
+        <article class="card rv">
           <div class="card-top">
             <h3>Baseline pinning &amp; drift detection</h3>
             <div class="cmd"><b>afw</b> pin · verify <span>--baseline afw.lock</span></div>
@@ -461,7 +380,7 @@
           </div>
         </article>
 
-        <article class="card">
+        <article class="card rv">
           <div class="card-top">
             <h3>Web UI</h3>
             <div class="cmd"><b>afw</b> serve <span>--open  # 127.0.0.1</span></div>
@@ -491,17 +410,16 @@
     </div>
   </section>
 
-  <!-- TIER 3: TRUST ZONE -->
-  <section id="trust" class="tier">
+<section id="trust" class="tier">
     <div class="wrap">
-      <div class="tier-head">
+      <div class="tier-head rv">
         <span class="tier-num">TIER 03 · PROVENANCE</span>
         <h2>Trust zones</h2>
       </div>
       <p class="tier-sub">Like a firewall's trust zones, treat unknown sources with more suspicion — assign each artifact a trust tier and match it against threat intel.</p>
 
       <div class="cards">
-        <article class="card">
+        <article class="card rv">
           <div class="card-top">
             <h3>Trust tiers from provenance</h3>
             <div class="cmd">UNTRUSTED · DECLARED · PINNED · <b>VERIFIED</b></div>
@@ -527,7 +445,7 @@
           </div>
         </article>
 
-        <article class="card">
+        <article class="card rv">
           <div class="card-top">
             <h3>Threat-intel / IoC feeds</h3>
             <div class="cmd"><b>afw</b> scan <span>--intel ./my-iocs/</span></div>
@@ -556,10 +474,9 @@
     </div>
   </section>
 
-  <!-- TIER 4: RUNTIME -->
-  <section id="runtime" class="tier">
+<section id="runtime" class="tier">
     <div class="wrap">
-      <div class="tier-head">
+      <div class="tier-head rv">
         <span class="tier-num">TIER 04 · RUNTIME</span>
         <h2>Contain what runs</h2>
       </div>
@@ -567,7 +484,7 @@
 
       <div class="cards">
 
-        <article class="card">
+        <article class="card rv">
           <div class="card-top">
             <h3>Egress firewall + outbound DLP</h3>
             <div class="cmd"><b>afw</b> run <span>--allow "*.github.com" -- cmd</span></div>
@@ -595,7 +512,7 @@
           </div>
         </article>
 
-        <article class="card">
+        <article class="card rv">
           <div class="card-top">
             <h3>MCP tool-call proxy</h3>
             <div class="cmd"><b>afw</b> mcp-proxy <span>--action redact -- server</span></div>
@@ -622,7 +539,7 @@
           </div>
         </article>
 
-        <article class="card">
+        <article class="card rv">
           <div class="card-top">
             <h3>Kernel network isolation</h3>
             <div class="cmd"><b>afw</b> run <span>--isolate -- bash setup.sh</span></div>
@@ -649,7 +566,7 @@
           </div>
         </article>
 
-        <article class="card">
+        <article class="card rv">
           <div class="card-top">
             <h3>Bypass-proof allowlisting</h3>
             <div class="cmd"><b>afw</b> run <span>--isolate --allow host -- cmd</span></div>
@@ -680,17 +597,16 @@
     </div>
   </section>
 
-  <!-- OUTBOUND -->
-  <section id="outbound" class="tier">
+<section id="outbound" class="tier">
     <div class="wrap">
-      <div class="tier-head">
+      <div class="tier-head rv">
         <span class="tier-num">DIRECTION · OUTBOUND</span>
         <h2>Harden the agents you deploy</h2>
       </div>
       <p class="tier-sub">The other direction of trust: an agent you ship, abused by its own users. Scan your app for the classes that keep showing up in the wild — then actually enforce the fix.</p>
 
       <div class="cards">
-        <article class="card">
+        <article class="card rv">
           <div class="card-top">
             <h3>Deployed-agent detections</h3>
             <div class="cmd"><b>afw</b> scan <span>./my-agent-app</span></div>
@@ -716,7 +632,7 @@
           </div>
         </article>
 
-        <article class="card">
+        <article class="card rv">
           <div class="card-top">
             <h3>Runtime guardrail library</h3>
             <div class="cmd">from <b>agentfirewall.guardrails</b> import …</div>
@@ -747,17 +663,16 @@
     </div>
   </section>
 
-  <!-- PLATFORM -->
-  <section id="platform" class="tier">
+<section id="platform" class="tier">
     <div class="wrap">
-      <div class="tier-head">
+      <div class="tier-head rv">
         <span class="tier-num">PLATFORM · DX</span>
         <h2>How you run &amp; report it</h2>
       </div>
       <p class="tier-sub">The plumbing that makes the detections usable in a real workflow — pipelines, dashboards, and a shared vocabulary for auditors.</p>
 
       <div class="cards">
-        <article class="card">
+        <article class="card rv">
           <div class="card-top">
             <h3>CI gate &amp; machine outputs</h3>
             <div class="cmd">uses: <b>mmedabo/agentfirewall@v1</b></div>
@@ -783,7 +698,7 @@
           </div>
         </article>
 
-        <article class="card">
+        <article class="card rv">
           <div class="card-top">
             <h3>Framework mapping</h3>
             <div class="cmd">OWASP LLM · ASI · MITRE ATLAS · SLSA · CWE</div>
@@ -809,38 +724,103 @@
           </div>
         </article>
       </div>
-
-      <div class="note">
-        <p><b>The honest caveat.</b> AIAgentFirewall is defence in depth, not a single guarantee. The static tiers read artifacts and can miss a novel payload; the runtime tiers contain execution but depend on the kernel features available to you. It helps you make an informed trust decision about third-party AI agents — it does not replace reading the code yourself for anything sensitive.</p>
-      </div>
-
-      <div class="dirs" style="margin-top:26px">
-        <a class="dir" href="index.html" style="text-decoration:none;display:block">
-          <h3><span class="tag">LAYER 01</span> Overview</h3>
-          <p>The plain-English introduction — what this is and why it matters, no jargon. →</p>
-        </a>
-        <a class="dir" href="reference.html" style="text-decoration:none;display:block">
-          <h3><span class="tag">LAYER 03</span> Reference</h3>
-          <p>Architecture, every command and flag, the full 59-detection catalogue and framework mappings. →</p>
-        </a>
-      </div>
-    </div>
-  </section>
-
-  <footer>
-    <div class="wrap">
-      <span class="brand"><span class="mark" aria-hidden="true"></span> AIAgentFirewall</span>
-      <div class="foot-meta">
-        <span><code>pip install AIAgentFirewall</code></span>
-        <span>import <code>agentfirewall</code></span>
-        <span>CLI <code>afw</code></span>
-        <a href="https://pypi.org/project/AIAgentFirewall/">PyPI</a>
-        <a href="https://github.com/mmedabo/agentfirewall">GitHub</a>
-        <span>MIT · v1.3.1</span>
-      </div>
-    </div>
-  </footer>
-
 </div>
+  </section>
+<section class="tier">
+  <div class="wrap">
+    <div class="note rv">
+      <p><b>The honest caveat.</b> AIAgentFirewall is defence in depth, not a single guarantee. The static tiers read artifacts and can miss a novel payload; the runtime tiers contain execution but depend on the kernel features available to you. It helps you make an informed trust decision about third-party AI agents — it does not replace reading the code yourself for anything sensitive.</p>
+    </div>
+
+    <div class="next">
+      <a class="nextcard rv" href="index.html">
+        <span class="ly">Layer 01 · Overview</span>
+        <h3>The plain-English intro</h3>
+        <p>What this is and why it matters, in about thirty seconds. No jargon.</p>
+        <span class="go">← Back to the overview</span>
+      </a>
+      <a class="nextcard rv" href="reference.html">
+        <span class="ly">Layer 03 · Reference</span>
+        <h3>The full reference</h3>
+        <p>Architecture, every command and flag, the complete 59-detection catalogue and framework mappings.</p>
+        <span class="go">Open the reference →</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <span class="logo"><span class="glyph" aria-hidden="true"></span> AIAgentFirewall</span>
+    <div class="foot-meta">
+      <code>pip install AIAgentFirewall</code>
+      <a href="https://pypi.org/project/AIAgentFirewall/">PyPI</a>
+      <a href="https://github.com/mmedabo/agentfirewall">GitHub</a>
+      <span>MIT · v1.3.1</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  "use strict";
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ambient canvas */
+  (function bg(){
+    var c=document.getElementById("bgfx"); if(!c) return;
+    var x=c.getContext("2d"),w,h,dpr,t=0,sparks=[];
+    function size(){dpr=Math.min(window.devicePixelRatio||1,2);w=c.clientWidth;h=c.clientHeight;
+      c.width=w*dpr;c.height=h*dpr;x.setTransform(dpr,0,0,dpr,0,0);}
+    function seed(){sparks=[];var n=Math.min(26,Math.round(w*h/56000));
+      for(var i=0;i<n;i++)sparks.push({x:Math.random()*w,y:Math.random()*h,v:.1+Math.random()*.4,
+        r:.6+Math.random()*1.1,c:Math.random()>.55?"0,243,255":"112,0,255"});}
+    function draw(){
+      x.clearRect(0,0,w,h);
+      var g=64,off=reduce?0:(t*.15)%g;
+      x.lineWidth=1;x.strokeStyle="rgba(120,140,190,.05)";x.beginPath();
+      for(var gx=-g+off;gx<w+g;gx+=g){x.moveTo(gx,0);x.lineTo(gx,h);}
+      for(var gy=-g+off;gy<h+g;gy+=g){x.moveTo(0,gy);x.lineTo(w,gy);}
+      x.stroke();
+      for(var i=0;i<sparks.length;i++){var s=sparks[i];
+        if(!reduce){s.y-=s.v;if(s.y<-6){s.y=h+6;s.x=Math.random()*w;}}
+        x.beginPath();x.fillStyle="rgba("+s.c+",.45)";x.shadowBlur=8;x.shadowColor="rgba("+s.c+",.8)";
+        x.arc(s.x,s.y,s.r,0,6.283);x.fill();x.shadowBlur=0;}
+      t++;requestAnimationFrame(draw);
+    }
+    size();seed();
+    window.addEventListener("resize",function(){size();seed();},{passive:true});
+    requestAnimationFrame(draw);
+  })();
+
+  /* nav + scroll progress */
+  var nav=document.getElementById("nav"),prog=document.getElementById("prog");
+  function onScroll(){
+    nav.classList.toggle("stuck",window.scrollY>40);
+    var d=document.documentElement.scrollHeight-window.innerHeight;
+    prog.style.width=(d>0?(window.scrollY/d)*100:0)+"%";
+  }
+  window.addEventListener("scroll",onScroll,{passive:true});
+  window.addEventListener("resize",onScroll,{passive:true});
+  onScroll();
+
+  /* reveals */
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(e){if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target);}});
+  },{threshold:.1,rootMargin:"0px 0px -6% 0px"});
+  Array.prototype.forEach.call(document.querySelectorAll(".rv"),function(el,i){
+    el.style.transitionDelay=Math.min((i%4)*70,220)+"ms";io.observe(el);
+  });
+
+  /* card pointer glow */
+  Array.prototype.forEach.call(document.querySelectorAll(".card"),function(el){
+    el.addEventListener("pointermove",function(ev){
+      var r=el.getBoundingClientRect();
+      el.style.setProperty("--mx",(ev.clientX-r.left)+"px");
+      el.style.setProperty("--my",(ev.clientY-r.top)+"px");
+    });
+  });
+})();
+</script>
 </body>
 </html>
