@@ -6,7 +6,7 @@ A task-oriented cookbook for every command. For the big picture see the
 ## Install
 
 ```bash
-pip install agentfirewall          # from PyPI (once published)
+pip install AIAgentFirewall        # from PyPI (once published); import stays `agentfirewall`
 # or from source:
 git clone https://github.com/mmedabo/agentfirewall && cd agentfirewall && pip install -e .
 ```
