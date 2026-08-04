@@ -1,0 +1,833 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AIAgentFirewall — Feature Field Guide</title>
+<style>
+  :root{
+    /* light theme (base) */
+    --bg:#F4F7F7;
+    --bg-2:#FFFFFF;
+    --panel:#FBFDFD;
+    --ink:#14202A;
+    --ink-soft:#33424E;
+    --muted:#5C6B76;
+    --line:#DBE4E6;
+    --line-strong:#C4D1D3;
+    --accent:#0C8A92;
+    --accent-ink:#075056;
+    --accent-tint:#E2F1F1;
+    --allow:#1E8A4C;
+    --warn:#A9741A;
+    --block:#BE3A32;
+    --allow-tint:#E7F3EB;
+    --block-tint:#F7E9E8;
+    --shadow:0 1px 2px rgba(20,32,42,.06),0 8px 24px -12px rgba(20,32,42,.18);
+    --grid:rgba(12,138,146,.09);
+    --font-sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --maxw:1120px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0A0F16;
+      --bg-2:#121B24;
+      --panel:#0F1720;
+      --ink:#E7EEF3;
+      --ink-soft:#C2CDD6;
+      --muted:#8B99A6;
+      --line:#233039;
+      --line-strong:#31414C;
+      --accent:#34C7CD;
+      --accent-ink:#8EE6E9;
+      --accent-tint:#0F2429;
+      --allow:#48BB6B;
+      --warn:#D3A03C;
+      --block:#E56A61;
+      --allow-tint:#112017;
+      --block-tint:#251615;
+      --shadow:0 1px 0 rgba(255,255,255,.02),0 18px 40px -20px rgba(0,0,0,.7);
+      --grid:rgba(52,199,205,.08);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#F4F7F7;--bg-2:#FFFFFF;--panel:#FBFDFD;--ink:#14202A;--ink-soft:#33424E;--muted:#5C6B76;
+    --line:#DBE4E6;--line-strong:#C4D1D3;--accent:#0C8A92;--accent-ink:#075056;--accent-tint:#E2F1F1;
+    --allow:#1E8A4C;--warn:#A9741A;--block:#BE3A32;--allow-tint:#E7F3EB;--block-tint:#F7E9E8;
+    --shadow:0 1px 2px rgba(20,32,42,.06),0 8px 24px -12px rgba(20,32,42,.18);--grid:rgba(12,138,146,.09);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0A0F16;--bg-2:#121B24;--panel:#0F1720;--ink:#E7EEF3;--ink-soft:#C2CDD6;--muted:#8B99A6;
+    --line:#233039;--line-strong:#31414C;--accent:#34C7CD;--accent-ink:#8EE6E9;--accent-tint:#0F2429;
+    --allow:#48BB6B;--warn:#D3A03C;--block:#E56A61;--allow-tint:#112017;--block-tint:#251615;
+    --shadow:0 1px 0 rgba(255,255,255,.02),0 18px 40px -20px rgba(0,0,0,.7);--grid:rgba(52,199,205,.08);
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0}
+  .page{
+    background:var(--bg);color:var(--ink);
+    font-family:var(--font-sans);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    font-size:16.5px;
+  }
+  a{color:inherit}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+
+  /* ---------- top bar ---------- */
+  .topbar{
+    position:sticky;top:0;z-index:50;
+    backdrop-filter:saturate(140%) blur(10px);
+    background:color-mix(in srgb,var(--bg) 82%,transparent);
+    border-bottom:1px solid var(--line);
+  }
+  .topbar .wrap{display:flex;align-items:center;gap:18px;min-height:58px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:750;letter-spacing:-.01em;white-space:nowrap}
+  .brand .mark{
+    width:22px;height:22px;flex:none;border-radius:5px;
+    background:linear-gradient(150deg,var(--accent),color-mix(in srgb,var(--accent) 55%,var(--ink)));
+    box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 50%,transparent);
+  }
+  .brand small{font-family:var(--font-mono);font-weight:600;font-size:.7rem;color:var(--muted);letter-spacing:.02em}
+  .navlinks{margin-left:auto;display:flex;gap:4px;flex-wrap:wrap}
+  .navlinks a{
+    font-size:.82rem;color:var(--muted);text-decoration:none;padding:6px 10px;border-radius:7px;
+    font-weight:600;transition:color .15s,background .15s;
+  }
+  .navlinks a:hover{color:var(--ink);background:var(--accent-tint)}
+  .navlinks a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  @media (max-width:820px){.navlinks{display:none}}
+  .layers{margin-left:auto;display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg-2)}
+  .layers a{padding:8px 13px;font-size:.8rem;font-weight:650;color:var(--muted);text-decoration:none;display:flex;gap:8px;align-items:center;border-right:1px solid var(--line);transition:color .15s,background .15s}
+  .layers a:last-child{border-right:0}
+  .layers a:hover{color:var(--ink)}
+  .layers a[aria-current="page"]{background:var(--accent-tint);color:var(--accent-ink)}
+  .layers a .ln{font-family:var(--font-mono);opacity:.65;font-size:.74rem}
+  .layers a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  @media (max-width:680px){.layers a .lt{display:none}.layers a{padding:8px 11px}}
+
+  /* ---------- hero ---------- */
+  .hero{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
+  .hero::before{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:34px 34px;
+    -webkit-mask-image:radial-gradient(120% 90% at 78% -10%,#000 0%,transparent 62%);
+    mask-image:radial-gradient(120% 90% at 78% -10%,#000 0%,transparent 62%);
+  }
+  .hero .wrap{position:relative;padding:64px 24px 56px}
+  .eyebrow{
+    font-family:var(--font-mono);font-size:.74rem;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--accent-ink);font-weight:650;display:inline-flex;align-items:center;gap:8px;
+  }
+  .eyebrow::before{content:"";width:26px;height:1px;background:var(--accent)}
+  h1{
+    font-size:clamp(2.3rem,5.4vw,3.6rem);line-height:1.03;letter-spacing:-.03em;font-weight:800;
+    margin:.5em 0 .28em;max-width:16ch;text-wrap:balance;
+  }
+  h1 .fw{color:var(--accent)}
+  .lede{font-size:clamp(1.05rem,2vw,1.24rem);color:var(--ink-soft);max-width:60ch;margin:0}
+  .lede b{color:var(--ink);font-weight:650}
+  .verdicts{display:flex;gap:10px;flex-wrap:wrap;margin-top:26px}
+  .stamp{
+    font-family:var(--font-mono);font-size:.72rem;font-weight:700;letter-spacing:.08em;
+    padding:6px 11px;border-radius:6px;border:1px solid;display:inline-flex;align-items:center;gap:7px;
+  }
+  .stamp::before{content:"";width:7px;height:7px;border-radius:50%}
+  .stamp.a{color:var(--allow);border-color:color-mix(in srgb,var(--allow) 40%,var(--line));background:var(--allow-tint)}
+  .stamp.a::before{background:var(--allow)}
+  .stamp.w{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 40%,var(--line));background:color-mix(in srgb,var(--warn) 12%,var(--bg-2))}
+  .stamp.w::before{background:var(--warn)}
+  .stamp.b{color:var(--block);border-color:color-mix(in srgb,var(--block) 40%,var(--line));background:var(--block-tint)}
+  .stamp.b::before{background:var(--block)}
+
+  .stats{
+    display:grid;grid-template-columns:repeat(5,1fr);gap:1px;margin-top:40px;
+    background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;
+  }
+  .stat{background:var(--bg-2);padding:18px 16px}
+  .stat .n{font-size:1.5rem;font-weight:780;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .stat .l{font-size:.76rem;color:var(--muted);margin-top:2px;font-weight:600}
+  @media (max-width:720px){.stats{grid-template-columns:repeat(2,1fr)}.stat:last-child{grid-column:1/-1}}
+
+  /* ---------- generic section ---------- */
+  section{padding:60px 0}
+  .sec-head{max-width:64ch}
+  .sec-head h2{
+    font-size:clamp(1.5rem,3vw,2rem);letter-spacing:-.02em;font-weight:780;margin:.35em 0 .3em;text-wrap:balance;
+  }
+  .sec-head p{color:var(--muted);margin:0;font-size:1.02rem}
+
+  /* ---------- pipeline ---------- */
+  .pipe-scroll{overflow-x:auto;margin-top:34px;padding-bottom:6px}
+  .pipe{display:flex;align-items:stretch;gap:0;min-width:760px}
+  .node{
+    flex:1;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;
+    position:relative;box-shadow:var(--shadow);
+  }
+  .node .k{font-family:var(--font-mono);font-size:.72rem;color:var(--accent-ink);font-weight:650;letter-spacing:.04em}
+  .node .t{font-weight:700;margin-top:5px;font-size:.98rem}
+  .node .d{color:var(--muted);font-size:.82rem;margin-top:3px}
+  .arrow{display:flex;align-items:center;justify-content:center;width:34px;color:var(--line-strong);flex:none;font-size:1.2rem}
+  .arrow span{transform:translateY(-1px)}
+
+  .dirs{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:26px}
+  @media (max-width:720px){.dirs{grid-template-columns:1fr}}
+  .dir{border:1px solid var(--line);border-radius:12px;padding:20px 22px;background:var(--panel)}
+  .dir h3{margin:0 0 6px;font-size:1.05rem;display:flex;align-items:center;gap:9px}
+  .dir h3 .tag{font-family:var(--font-mono);font-size:.66rem;padding:3px 7px;border-radius:5px;background:var(--accent-tint);color:var(--accent-ink);font-weight:700;letter-spacing:.04em}
+  .dir p{margin:0;color:var(--ink-soft);font-size:.95rem}
+
+  /* ---------- tier band ---------- */
+  .tier{border-top:1px solid var(--line)}
+  .tier-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+  .tier-num{font-family:var(--font-mono);font-size:.8rem;color:var(--accent-ink);font-weight:700;letter-spacing:.06em}
+  .tier-head h2{font-size:clamp(1.4rem,2.7vw,1.85rem);letter-spacing:-.02em;font-weight:780;margin:0}
+  .tier-sub{color:var(--muted);margin:2px 0 0;font-size:.98rem;max-width:70ch}
+
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:28px}
+  @media (max-width:860px){.cards{grid-template-columns:1fr}}
+  .card{
+    background:var(--bg-2);border:1px solid var(--line);border-radius:14px;padding:22px 22px 20px;
+    box-shadow:var(--shadow);display:flex;flex-direction:column;gap:14px;
+    transition:transform .18s ease,border-color .18s ease;
+  }
+  .card:hover{transform:translateY(-2px);border-color:var(--line-strong)}
+  @media (prefers-reduced-motion:reduce){.card:hover{transform:none}}
+  .card-top{display:flex;flex-direction:column;gap:9px}
+  .card h3{margin:0;font-size:1.16rem;letter-spacing:-.015em;font-weight:760;line-height:1.2}
+  .cmd{
+    font-family:var(--font-mono);font-size:.78rem;color:var(--ink-soft);
+    background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:6px 9px;
+    align-self:flex-start;max-width:100%;overflow-x:auto;white-space:nowrap;
+  }
+  .cmd b{color:var(--accent-ink);font-weight:700}
+  .why{margin:0;color:var(--ink-soft);font-size:.94rem}
+  .block-label{
+    font-family:var(--font-mono);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--muted);font-weight:650;margin-bottom:7px;display:block;
+  }
+  .uses{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+  .uses li{position:relative;padding-left:18px;font-size:.9rem;color:var(--ink-soft)}
+  .uses li::before{content:"";position:absolute;left:2px;top:.62em;width:6px;height:6px;border-radius:1px;background:var(--accent);transform:rotate(45deg)}
+
+  .pc{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:2px}
+  @media (max-width:520px){.pc{grid-template-columns:1fr}}
+  .pcbox{border:1px solid var(--line);border-radius:10px;padding:12px 13px;background:var(--panel)}
+  .pcbox.pro{border-color:color-mix(in srgb,var(--allow) 26%,var(--line))}
+  .pcbox.con{border-color:color-mix(in srgb,var(--block) 24%,var(--line))}
+  .pcbox h4{
+    margin:0 0 8px;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;font-weight:700;
+    display:flex;align-items:center;gap:7px;font-family:var(--font-mono);
+  }
+  .pro h4{color:var(--allow)}
+  .con h4{color:var(--block)}
+  .pcbox ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:7px}
+  .pcbox li{position:relative;padding-left:17px;font-size:.865rem;color:var(--ink-soft);line-height:1.45}
+  .pro li::before{content:"+";position:absolute;left:1px;top:-1px;color:var(--allow);font-weight:800;font-family:var(--font-mono)}
+  .con li::before{content:"–";position:absolute;left:1px;top:-1px;color:var(--block);font-weight:800;font-family:var(--font-mono)}
+
+  /* ---------- coverage strip ---------- */
+  .cov{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px}
+  .chip{
+    font-size:.82rem;border:1px solid var(--line);border-radius:999px;padding:6px 13px;background:var(--bg-2);
+    display:inline-flex;align-items:center;gap:8px;color:var(--ink-soft);font-weight:550;
+  }
+  .chip .id{font-family:var(--font-mono);font-size:.7rem;color:var(--muted)}
+
+  /* ---------- callout ---------- */
+  .note{
+    border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;
+    background:var(--panel);padding:18px 20px;margin-top:30px;
+  }
+  .note p{margin:0;color:var(--ink-soft);font-size:.95rem}
+  .note b{color:var(--ink)}
+
+  /* ---------- footer ---------- */
+  footer{border-top:1px solid var(--line);padding:34px 0 48px;color:var(--muted)}
+  footer .wrap{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between}
+  .foot-meta{display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:.85rem}
+  .foot-meta code{font-family:var(--font-mono);background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:3px 8px;color:var(--ink-soft)}
+  .foot-meta a{color:var(--accent-ink);text-decoration:none;font-weight:600}
+  .foot-meta a:hover{text-decoration:underline}
+  a.dir{color:inherit}
+  a.dir:hover{border-color:var(--accent)}
+  a.dir:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="topbar">
+    <div class="wrap">
+      <span class="brand"><span class="mark" aria-hidden="true"></span> AIAgentFirewall</span>
+      <nav class="layers" aria-label="Documentation layers">
+        <a href="index.html"><span class="ln">01</span><span class="lt">Overview</span></a>
+        <a href="features.html" aria-current="page"><span class="ln">02</span><span class="lt">Features</span></a>
+        <a href="reference.html"><span class="ln">03</span><span class="lt">Reference</span></a>
+      </nav>
+    </div>
+  </div>
+
+  <!-- HERO -->
+  <header class="hero">
+    <div class="wrap">
+      <span class="eyebrow">Feature Field Guide</span>
+      <h1>A security <span class="fw">firewall</span> for AI agents, skills &amp; MCP servers.</h1>
+      <p class="lede">Shareable agents, skills, plugins and MCP servers arrive from people you don't know — a single markdown file or <code>setup.sh</code> can read your keys, exfiltrate secrets, or hide instructions that steer your agent. AIAgentFirewall inspects an artifact <b>before</b> it touches your machine, <b>contains</b> what runs, and <b>hardens the agents you deploy</b> — 100% local, zero required dependencies.</p>
+
+      <div class="verdicts" aria-label="Verdict model">
+        <span class="stamp a">ALLOW</span>
+        <span class="stamp w">WARN</span>
+        <span class="stamp b">BLOCK</span>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="n">59</div><div class="l">detections</div></div>
+        <div class="stat"><div class="n">23</div><div class="l">threat categories</div></div>
+        <div class="stat"><div class="n">4</div><div class="l">defense tiers</div></div>
+        <div class="stat"><div class="n">0</div><div class="l">required deps</div></div>
+        <div class="stat"><div class="n">MIT</div><div class="l">licensed</div></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- MENTAL MODEL -->
+  <section id="model">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="eyebrow">The mental model</span>
+        <h2>Layered like a real firewall — default-deny where it counts.</h2>
+        <p>Every scan runs the same pipeline: a target becomes an artifact, rules produce findings, and a policy turns findings into a verdict you can gate on. Nothing is executed to be scanned.</p>
+      </div>
+
+      <div class="pipe-scroll">
+        <div class="pipe">
+          <div class="node"><div class="k">input</div><div class="t">Target</div><div class="d">dir · file · .zip</div></div>
+          <div class="arrow"><span>→</span></div>
+          <div class="node"><div class="k">loaders</div><div class="t">Artifact</div><div class="d">files + declared tools</div></div>
+          <div class="arrow"><span>→</span></div>
+          <div class="node"><div class="k">engine</div><div class="t">Rules</div><div class="d">signatures + structural</div></div>
+          <div class="arrow"><span>→</span></div>
+          <div class="node"><div class="k">output</div><div class="t">Findings</div><div class="d">severity + framework refs</div></div>
+          <div class="arrow"><span>→</span></div>
+          <div class="node"><div class="k">policy</div><div class="t">Verdict</div><div class="d">allow · warn · block</div></div>
+        </div>
+      </div>
+
+      <div class="dirs">
+        <div class="dir">
+          <h3><span class="tag">INBOUND</span> Trust what you install</h3>
+          <p>Inspect a third-party artifact before it runs, hold low-provenance sources to a stricter bar, catch silent rug-pull updates, and contain execution at the kernel level when you do run it.</p>
+        </div>
+        <div class="dir">
+          <h3><span class="tag">OUTBOUND</span> Harden what you deploy</h3>
+          <p>An agent <em>you</em> ship can be abused by its own users — excessive agency, broken authorization. Scan your app for those classes, then enforce the fix at request time with an embeddable guardrail.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TIER 1: PRE-INSTALL -->
+  <section id="pre-install" class="tier">
+    <div class="wrap">
+      <div class="tier-head">
+        <span class="tier-num">TIER 01 · STATIC</span>
+        <h2>Pre-install inspection</h2>
+      </div>
+      <p class="tier-sub">Read the code, manifests and model-facing text without ever executing them — safe to point straight at untrusted content.</p>
+
+      <div class="cards">
+
+        <article class="card">
+          <div class="card-top">
+            <h3>Static scanner &amp; install gate</h3>
+            <div class="cmd"><b>afw</b> scan · verify · install <span>./artifact</span></div>
+          </div>
+          <p class="why"><b>Why it's needed.</b> Most agents/skills come from strangers, like npm packages or browser extensions. You need to know what an artifact <em>does</em> before granting it your machine and your credentials.</p>
+          <div>
+            <span class="block-label">Use cases</span>
+            <ul class="uses">
+              <li>Vet a skill you downloaded before copying it into <code>~/.claude/skills</code></li>
+              <li>Gate installs so a BLOCK verdict refuses to copy the artifact</li>
+              <li>Fail a CI pipeline on any high-risk finding</li>
+            </ul>
+          </div>
+          <div class="pc">
+            <div class="pcbox pro"><h4>Pros</h4><ul>
+              <li>Never executes code — safe on untrusted input</li>
+              <li>Fast, offline, zero required dependencies</li>
+              <li>Text / JSON / SARIF output; shell-friendly exit codes</li>
+            </ul></div>
+            <div class="pcbox con"><h4>Cons</h4><ul>
+              <li>Signature/heuristic based — a novel or heavily obfuscated payload can slip past</li>
+              <li>Can false-positive on legitimate but scary-looking code</li>
+              <li>Sees intent in text, not actual runtime behavior</li>
+            </ul></div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <h3>Broad detection coverage</h3>
+            <div class="cmd"><b>afw</b> rules <span># 59 detections · 23 categories</span></div>
+          </div>
+          <p class="why"><b>Why it's needed.</b> Attacks don't come in one shape. Coverage has to span credential theft, exfiltration, obfuscation, prompt injection, tool/memory poisoning, deserialization, typosquatting and more — under one policy.</p>
+          <div>
+            <span class="block-label">Catches, among others</span>
+            <div class="cov">
+              <span class="chip">Secret &amp; credential theft <span class="id">SEC</span></span>
+              <span class="chip">Data exfiltration <span class="id">NET</span></span>
+              <span class="chip">Obfuscation / dynamic exec <span class="id">OBF</span></span>
+              <span class="chip">Prompt injection <span class="id">PI</span></span>
+              <span class="chip">Tool poisoning <span class="id">TPZ</span></span>
+              <span class="chip">Memory poisoning <span class="id">MEM</span></span>
+              <span class="chip">Unsafe deserialization <span class="id">DES</span></span>
+              <span class="chip">Hidden Unicode <span class="id">HID</span></span>
+              <span class="chip">Typosquatting <span class="id">TYP</span></span>
+              <span class="chip">Auto-fetch exfil <span class="id">NET-007</span></span>
+            </div>
+          </div>
+          <div class="pc">
+            <div class="pcbox pro"><h4>Pros</h4><ul>
+              <li>Wide, real-world-driven rule set out of the box</li>
+              <li>Adding a new signature is usually one line</li>
+              <li>Every finding cites its category and severity</li>
+            </ul></div>
+            <div class="pcbox con"><h4>Cons</h4><ul>
+              <li>Breadth is not completeness — new classes need new rules</li>
+              <li>More rules means more tuning to keep noise down</li>
+            </ul></div>
+          </div>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- TIER 2: STATEFUL -->
+  <section id="stateful" class="tier">
+    <div class="wrap">
+      <div class="tier-head">
+        <span class="tier-num">TIER 02 · STATEFUL</span>
+        <h2>Rug-pull defense</h2>
+      </div>
+      <p class="tier-sub">The attack static scanning can't see on its own: an artifact that's clean today and malicious after an update. Pin what you approved, re-check every change.</p>
+
+      <div class="cards">
+        <article class="card">
+          <div class="card-top">
+            <h3>Baseline pinning &amp; drift detection</h3>
+            <div class="cmd"><b>afw</b> pin · verify <span>--baseline afw.lock</span></div>
+          </div>
+          <p class="why"><b>Why it's needed.</b> Supply-chain attacks ship clean and mutate later (the Postmark BCC incident, insider updates). A previously-approved tool whose permissions or description silently change is, by itself, the alarm — even with no known-bad signature.</p>
+          <div>
+            <span class="block-label">Use cases</span>
+            <ul class="uses">
+              <li>Approve a skill once, then diff every future update against the lock</li>
+              <li>Catch a new tool grant or mutated tool description after an "innocent" bump</li>
+              <li>Enforce "no silent permission creep" in a shared agent repo</li>
+            </ul>
+          </div>
+          <div class="pc">
+            <div class="pcbox pro"><h4>Pros</h4><ul>
+              <li>Detects clean-then-malicious changes signatures miss</li>
+              <li>A permission/description change alone raises an alert</li>
+              <li>Purely local state — one <code>afw.lock</code> file</li>
+            </ul></div>
+            <div class="pcbox con"><h4>Cons</h4><ul>
+              <li>Only as good as the baseline you approved in the first place</li>
+              <li>Store the lock where the artifact can't rewrite it</li>
+              <li>Needs re-pin discipline after you review a legitimate diff</li>
+            </ul></div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <h3>Web UI</h3>
+            <div class="cmd"><b>afw</b> serve <span>--open  # 127.0.0.1</span></div>
+          </div>
+          <p class="why"><b>Why it's needed.</b> Not everyone lives in a terminal. A reviewer, a security lead, or a teammate should be able to drag-drop a folder and read the verdict, trust tier and evidence without learning a CLI.</p>
+          <div>
+            <span class="block-label">Use cases</span>
+            <ul class="uses">
+              <li>Hand a non-CLI teammate a way to vet an artifact</li>
+              <li>Quick visual triage of findings with evidence + remediation</li>
+              <li>Demo the tool without touching a shell</li>
+            </ul>
+          </div>
+          <div class="pc">
+            <div class="pcbox pro"><h4>Pros</h4><ul>
+              <li>Loopback-only, token-protected JSON API</li>
+              <li>Nothing is uploaded or executed — runs entirely locally</li>
+              <li>Path-traversal-safe uploads</li>
+            </ul></div>
+            <div class="pcbox con"><h4>Cons</h4><ul>
+              <li>Local single-user by design — not a hosted service</li>
+              <li>Same detection limits as the CLI underneath</li>
+            </ul></div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- TIER 3: TRUST ZONE -->
+  <section id="trust" class="tier">
+    <div class="wrap">
+      <div class="tier-head">
+        <span class="tier-num">TIER 03 · PROVENANCE</span>
+        <h2>Trust zones</h2>
+      </div>
+      <p class="tier-sub">Like a firewall's trust zones, treat unknown sources with more suspicion — assign each artifact a trust tier and match it against threat intel.</p>
+
+      <div class="cards">
+        <article class="card">
+          <div class="card-top">
+            <h3>Trust tiers from provenance</h3>
+            <div class="cmd">UNTRUSTED · DECLARED · PINNED · <b>VERIFIED</b></div>
+          </div>
+          <p class="why"><b>Why it's needed.</b> An unsigned artifact from nowhere shouldn't get the same benefit of the doubt as one you've cryptographically verified. Risk-proportionate policy means low-trust artifacts clear a stricter bar automatically.</p>
+          <div>
+            <span class="block-label">Use cases</span>
+            <ul class="uses">
+              <li>Auto-tighten the block threshold for unsigned / unpinned artifacts</li>
+              <li>Verify a maintainer signature against an expected identity</li>
+              <li>Reward artifacts carrying an SBOM or attestation</li>
+            </ul>
+          </div>
+          <div class="pc">
+            <div class="pcbox pro"><h4>Pros</h4><ul>
+              <li>Cheap signal that shapes policy without extra work</li>
+              <li>Optional cryptographic verification with <code>--identity</code></li>
+            </ul></div>
+            <div class="pcbox con"><h4>Cons</h4><ul>
+              <li>Provenance detection isn't proof unless you verify signatures</li>
+              <li>A signed artifact can still be malicious — trust ≠ safety</li>
+            </ul></div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <h3>Threat-intel / IoC feeds</h3>
+            <div class="cmd"><b>afw</b> scan <span>--intel ./my-iocs/</span></div>
+          </div>
+          <p class="why"><b>Why it's needed.</b> Some artifacts are already known-bad. Matching name, file hash, contacted domain and signer identity against indicator lists catches a threat you've seen before — without phoning home.</p>
+          <div>
+            <span class="block-label">Use cases</span>
+            <ul class="uses">
+              <li>Block artifacts whose hash or domain is on your blocklist</li>
+              <li>Flag a revoked or impersonated signer identity</li>
+              <li>Ship org-specific IoCs to every developer's machine</li>
+            </ul>
+          </div>
+          <div class="pc">
+            <div class="pcbox pro"><h4>Pros</h4><ul>
+              <li>Fully offline — JSON or plain-text feeds, nothing leaves the box</li>
+              <li>Pluggable; auto-loads feeds from your config dir</li>
+            </ul></div>
+            <div class="pcbox con"><h4>Cons</h4><ul>
+              <li>Reactive by nature — only catches known-bad indicators</li>
+              <li>Only as current as the feeds you supply (seed is intentionally minimal)</li>
+            </ul></div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- TIER 4: RUNTIME -->
+  <section id="runtime" class="tier">
+    <div class="wrap">
+      <div class="tier-head">
+        <span class="tier-num">TIER 04 · RUNTIME</span>
+        <h2>Contain what runs</h2>
+      </div>
+      <p class="tier-sub">Static scanning can't stop a payload it didn't recognise. The runtime layer never needs to trust the code — it controls what the running process can reach and say.</p>
+
+      <div class="cards">
+
+        <article class="card">
+          <div class="card-top">
+            <h3>Egress firewall + outbound DLP</h3>
+            <div class="cmd"><b>afw</b> run <span>--allow "*.github.com" -- cmd</span></div>
+          </div>
+          <p class="why"><b>Why it's needed.</b> The point of most malicious payloads is to phone out — to a webhook, a paste site, an attacker host. A default-deny egress allowlist turns "exfiltrate anywhere" into "reach nothing but what I approved."</p>
+          <div>
+            <span class="block-label">Use cases</span>
+            <ul class="uses">
+              <li>Run an untrusted agent that should only reach one API</li>
+              <li>Fail CI if a build step tries any off-allowlist connection</li>
+              <li>Block a plaintext request that carries a secret, even to an allowed host</li>
+            </ul>
+          </div>
+          <div class="pc">
+            <div class="pcbox pro"><h4>Pros</h4><ul>
+              <li>Default-deny; everything off the allowlist gets a logged 403</li>
+              <li><code>--fail-on-egress</code> for CI enforcement</li>
+              <li>Built-in DLP blocks secrets leaving in plaintext bodies</li>
+            </ul></div>
+            <div class="pcbox con"><h4>Cons</h4><ul>
+              <li>Proxy-based — only governs clients that honor <code>HTTP(S)_PROXY</code></li>
+              <li>A raw socket that ignores the proxy bypasses it (use <code>--isolate</code>)</li>
+              <li>HTTPS bodies stay opaque to DLP</li>
+            </ul></div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <h3>MCP tool-call proxy</h3>
+            <div class="cmd"><b>afw</b> mcp-proxy <span>--action redact -- server</span></div>
+          </div>
+          <p class="why"><b>Why it's needed.</b> An MCP server sits between your agent and real tools. It can hide directives in tool descriptions, siphon secrets in call arguments, or inject instructions in results. You want eyes on that JSON-RPC channel live.</p>
+          <div>
+            <span class="block-label">Use cases</span>
+            <ul class="uses">
+              <li>Inspect an unfamiliar MCP server's traffic in real time</li>
+              <li>Redact secrets in tool-call arguments instead of blocking</li>
+              <li>Block tool-poisoning descriptions before they reach the model</li>
+            </ul>
+          </div>
+          <div class="pc">
+            <div class="pcbox pro"><h4>Pros</h4><ul>
+              <li>Catches poisoning, secret egress and injected results at the wire</li>
+              <li>Forward, redact or block per <code>--action</code></li>
+              <li>Findings to stderr — stdout stays a clean JSON-RPC channel</li>
+            </ul></div>
+            <div class="pcbox con"><h4>Cons</h4><ul>
+              <li>Only covers servers you actually route through it</li>
+              <li>Adds a hop; can't inspect transports it doesn't sit on</li>
+            </ul></div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <h3>Kernel network isolation</h3>
+            <div class="cmd"><b>afw</b> run <span>--isolate -- bash setup.sh</span></div>
+          </div>
+          <p class="why"><b>Why it's needed.</b> For an untrusted install hook, a proxy allowlist isn't enough — the script can open a raw socket. A kernel network namespace with no external interface means it <em>physically cannot</em> reach any host, even as root inside.</p>
+          <div>
+            <span class="block-label">Use cases</span>
+            <ul class="uses">
+              <li>Run a sketchy <code>setup.sh</code> with zero network, guaranteed</li>
+              <li>Execute build/postinstall hooks that shouldn't touch the net</li>
+              <li>Contain a tool you don't trust not to try raw sockets</li>
+            </ul>
+          </div>
+          <div class="pc">
+            <div class="pcbox pro"><h4>Pros</h4><ul>
+              <li>Bypass-proof — no interface, so raw sockets fail too</li>
+              <li>Refuses to run rather than run unprotected</li>
+              <li>Pure <code>unshare</code> + stdlib; <code>bubblewrap</code> optional</li>
+            </ul></div>
+            <div class="pcbox con"><h4>Cons</h4><ul>
+              <li>Needs Linux namespace support (some locked-down CI can't)</li>
+              <li>Zero network breaks anything that legitimately needs it</li>
+            </ul></div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <h3>Bypass-proof allowlisting</h3>
+            <div class="cmd"><b>afw</b> run <span>--isolate --allow host -- cmd</span></div>
+          </div>
+          <p class="why"><b>Why it's needed.</b> Sometimes you need <em>both</em>: reach exactly these hosts and nothing else, with no way to escape it. A no-IP namespace whose egress is brokered through a Unix-socket proxy gives allowlisting that a raw socket can't dodge.</p>
+          <div>
+            <span class="block-label">Use cases</span>
+            <ul class="uses">
+              <li>Let an untrusted agent reach one API and truly nothing else</li>
+              <li>Strongest containment for a tool you must run but can't trust</li>
+              <li>Hard-scope egress in a hostile-input pipeline</li>
+            </ul>
+          </div>
+          <div class="pc">
+            <div class="pcbox pro"><h4>Pros</h4><ul>
+              <li>Kernel-enforced allowlist — a raw socket simply gets no network</li>
+              <li>A UDS crosses the namespace boundary; IP traffic can't</li>
+              <li><code>--fail-on-egress</code> still applies</li>
+            </ul></div>
+            <div class="pcbox con"><h4>Cons</h4><ul>
+              <li>Linux / <code>unshare</code> only; more moving parts</li>
+              <li>An allowed host can still legitimately receive data</li>
+            </ul></div>
+          </div>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- OUTBOUND -->
+  <section id="outbound" class="tier">
+    <div class="wrap">
+      <div class="tier-head">
+        <span class="tier-num">DIRECTION · OUTBOUND</span>
+        <h2>Harden the agents you deploy</h2>
+      </div>
+      <p class="tier-sub">The other direction of trust: an agent you ship, abused by its own users. Scan your app for the classes that keep showing up in the wild — then actually enforce the fix.</p>
+
+      <div class="cards">
+        <article class="card">
+          <div class="card-top">
+            <h3>Deployed-agent detections</h3>
+            <div class="cmd"><b>afw</b> scan <span>./my-agent-app</span></div>
+          </div>
+          <p class="why"><b>Why it's needed.</b> Two real bugs recur: a bot with excessive agency (the "food-ordering bot runs Python" case) and broken authorization (the expensive call fires before the quota check — the Bolt.new refresh exploit). Catch them in your own code before you ship.</p>
+          <div>
+            <span class="block-label">Use cases</span>
+            <ul class="uses">
+              <li>Flag a chatbot that will run arbitrary code or has no topic scope</li>
+              <li>Flag a model invoked <em>before</em> the credit/authz check (TOCTOU)</li>
+              <li>Flag a limit enforced only client-side</li>
+            </ul>
+          </div>
+          <div class="pc">
+            <div class="pcbox pro"><h4>Pros</h4><ul>
+              <li>Maps to OWASP LLM06, CWE-367 TOCTOU, API BFLA</li>
+              <li>Runs in the same scan/CI flow as inbound checks</li>
+            </ul></div>
+            <div class="pcbox con"><h4>Cons</h4><ul>
+              <li>Static — pattern-based, can miss framework-specific shapes</li>
+              <li>Detection is not enforcement — pair with the guardrail</li>
+            </ul></div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <h3>Runtime guardrail library</h3>
+            <div class="cmd">from <b>agentfirewall.guardrails</b> import …</div>
+          </div>
+          <p class="why"><b>Why it's needed.</b> Detecting the bug doesn't stop it. An embeddable guard enforces the fix at request time: reserve quota atomically <em>before</em> the agent runs (a refresh can't replay), confine tools to an allowlist, and refuse untrusted-derived data from driving sensitive actions.</p>
+          <div>
+            <span class="block-label">Use cases</span>
+            <ul class="uses">
+              <li>Kill the refresh/replay token-burn with idempotent check-before-act</li>
+              <li>Deny <code>run_python</code> / off-scope tool calls at dispatch</li>
+              <li>Taint retrieved docs so they can't drive email/http/sql sinks</li>
+            </ul>
+          </div>
+          <div class="pc">
+            <div class="pcbox pro"><h4>Pros</h4><ul>
+              <li>Actually enforces the fix, not just detects it</li>
+              <li>CaMeL-style taint guard against indirect prompt injection</li>
+              <li>Embeddable, zero-dependency, refunds on failure</li>
+            </ul></div>
+            <div class="pcbox con"><h4>Cons</h4><ul>
+              <li>Bundled quota/idempotency stores are single-process references — back with Redis/DB in prod</li>
+              <li>Taint requires you to wrap untrusted data yourself</li>
+              <li>Only as strong as the scope policy you define</li>
+            </ul></div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- PLATFORM -->
+  <section id="platform" class="tier">
+    <div class="wrap">
+      <div class="tier-head">
+        <span class="tier-num">PLATFORM · DX</span>
+        <h2>How you run &amp; report it</h2>
+      </div>
+      <p class="tier-sub">The plumbing that makes the detections usable in a real workflow — pipelines, dashboards, and a shared vocabulary for auditors.</p>
+
+      <div class="cards">
+        <article class="card">
+          <div class="card-top">
+            <h3>CI gate &amp; machine outputs</h3>
+            <div class="cmd">uses: <b>mmedabo/agentfirewall@v1</b></div>
+          </div>
+          <p class="why"><b>Why it's needed.</b> Security that only runs on a laptop gets skipped. A reusable GitHub Action plus SARIF/JSON output puts the firewall on every push and into your existing dashboards.</p>
+          <div>
+            <span class="block-label">Use cases</span>
+            <ul class="uses">
+              <li>Fail a PR that adds a BLOCK-worthy skill or agent</li>
+              <li>Upload SARIF to GitHub code-scanning</li>
+              <li>Feed JSON findings into your own automation</li>
+            </ul>
+          </div>
+          <div class="pc">
+            <div class="pcbox pro"><h4>Pros</h4><ul>
+              <li>One-line action; exit codes designed for shell &amp; CI</li>
+              <li>SARIF / JSON / text formats out of the box</li>
+            </ul></div>
+            <div class="pcbox con"><h4>Cons</h4><ul>
+              <li>SARIF viewing needs a compatible platform</li>
+              <li>Policy tuning needed to avoid noisy build failures</li>
+            </ul></div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-top">
+            <h3>Framework mapping</h3>
+            <div class="cmd">OWASP LLM · ASI · MITRE ATLAS · SLSA · CWE</div>
+          </div>
+          <p class="why"><b>Why it's needed.</b> "This looks bad" doesn't survive an audit. Every finding cites an industry framework, giving security teams a shared language and a mapping they can defend to compliance.</p>
+          <div>
+            <span class="block-label">Use cases</span>
+            <ul class="uses">
+              <li>Map findings to OWASP Top 10 for LLM / Agentic (ASI01–ASI10)</li>
+              <li>Reference MITRE ATLAS techniques in a report</li>
+              <li>Tie supply-chain findings to SLSA / CWE</li>
+            </ul>
+          </div>
+          <div class="pc">
+            <div class="pcbox pro"><h4>Pros</h4><ul>
+              <li>Audit- and compliance-friendly out of the box</li>
+              <li>Shared vocabulary across security &amp; dev teams</li>
+            </ul></div>
+            <div class="pcbox con"><h4>Cons</h4><ul>
+              <li>Mappings are guidance, not certification</li>
+              <li>Frameworks evolve — references track a point in time</li>
+            </ul></div>
+          </div>
+        </article>
+      </div>
+
+      <div class="note">
+        <p><b>The honest caveat.</b> AIAgentFirewall is defence in depth, not a single guarantee. The static tiers read artifacts and can miss a novel payload; the runtime tiers contain execution but depend on the kernel features available to you. It helps you make an informed trust decision about third-party AI agents — it does not replace reading the code yourself for anything sensitive.</p>
+      </div>
+
+      <div class="dirs" style="margin-top:26px">
+        <a class="dir" href="index.html" style="text-decoration:none;display:block">
+          <h3><span class="tag">LAYER 01</span> Overview</h3>
+          <p>The plain-English introduction — what this is and why it matters, no jargon. →</p>
+        </a>
+        <a class="dir" href="reference.html" style="text-decoration:none;display:block">
+          <h3><span class="tag">LAYER 03</span> Reference</h3>
+          <p>Architecture, every command and flag, the full 59-detection catalogue and framework mappings. →</p>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <span class="brand"><span class="mark" aria-hidden="true"></span> AIAgentFirewall</span>
+      <div class="foot-meta">
+        <span><code>pip install AIAgentFirewall</code></span>
+        <span>import <code>agentfirewall</code></span>
+        <span>CLI <code>afw</code></span>
+        <a href="https://pypi.org/project/AIAgentFirewall/">PyPI</a>
+        <a href="https://github.com/mmedabo/agentfirewall">GitHub</a>
+        <span>MIT · v1.3.1</span>
+      </div>
+    </div>
+  </footer>
+
+</div>
+</body>
+</html>

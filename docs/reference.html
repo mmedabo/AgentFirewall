@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AIAgentFirewall — Reference</title>
+<style>
+  :root{
+    --bg:#F4F7F7;--bg-2:#FFFFFF;--panel:#FBFDFD;--ink:#14202A;--ink-soft:#33424E;--muted:#5C6B76;
+    --line:#DBE4E6;--line-strong:#C4D1D3;--accent:#0C8A92;--accent-ink:#075056;--accent-tint:#E2F1F1;
+    --allow:#1E8A4C;--warn:#A9741A;--block:#BE3A32;--high:#C15A1E;
+    --allow-tint:#E7F3EB;--warn-tint:#F6EEDD;--block-tint:#F7E9E8;--high-tint:#F6EADF;
+    --shadow:0 1px 2px rgba(20,32,42,.06),0 10px 30px -14px rgba(20,32,42,.2);--grid:rgba(12,138,146,.09);
+    --font-sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --maxw:1140px;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --bg:#0A0F16;--bg-2:#121B24;--panel:#0F1720;--ink:#E7EEF3;--ink-soft:#C2CDD6;--muted:#8B99A6;
+    --line:#233039;--line-strong:#31414C;--accent:#34C7CD;--accent-ink:#8EE6E9;--accent-tint:#0F2429;
+    --allow:#48BB6B;--warn:#D3A03C;--block:#E56A61;--high:#E0873F;
+    --allow-tint:#112017;--warn-tint:#211B0F;--block-tint:#251615;--high-tint:#231708;
+    --shadow:0 1px 0 rgba(255,255,255,.02),0 20px 46px -22px rgba(0,0,0,.72);--grid:rgba(52,199,205,.08);
+  }}
+  :root[data-theme="light"]{--bg:#F4F7F7;--bg-2:#FFFFFF;--panel:#FBFDFD;--ink:#14202A;--ink-soft:#33424E;--muted:#5C6B76;--line:#DBE4E6;--line-strong:#C4D1D3;--accent:#0C8A92;--accent-ink:#075056;--accent-tint:#E2F1F1;--allow:#1E8A4C;--warn:#A9741A;--block:#BE3A32;--high:#C15A1E;--allow-tint:#E7F3EB;--warn-tint:#F6EEDD;--block-tint:#F7E9E8;--high-tint:#F6EADF;--shadow:0 1px 2px rgba(20,32,42,.06),0 10px 30px -14px rgba(20,32,42,.2);--grid:rgba(12,138,146,.09);}
+  :root[data-theme="dark"]{--bg:#0A0F16;--bg-2:#121B24;--panel:#0F1720;--ink:#E7EEF3;--ink-soft:#C2CDD6;--muted:#8B99A6;--line:#233039;--line-strong:#31414C;--accent:#34C7CD;--accent-ink:#8EE6E9;--accent-tint:#0F2429;--allow:#48BB6B;--warn:#D3A03C;--block:#E56A61;--high:#E0873F;--allow-tint:#112017;--warn-tint:#211B0F;--block-tint:#251615;--high-tint:#231708;--shadow:0 1px 0 rgba(255,255,255,.02),0 20px 46px -22px rgba(0,0,0,.72);--grid:rgba(52,199,205,.08);}
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-sans);line-height:1.62;font-size:16px;-webkit-font-smoothing:antialiased}
+  a{color:inherit}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+  code{font-family:var(--font-mono)}
+
+  .topbar{position:sticky;top:0;z-index:50;backdrop-filter:saturate(140%) blur(10px);background:color-mix(in srgb,var(--bg) 82%,transparent);border-bottom:1px solid var(--line)}
+  .topbar .wrap{display:flex;align-items:center;gap:16px;min-height:60px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:750;letter-spacing:-.01em;white-space:nowrap}
+  .brand .mark{width:22px;height:22px;flex:none;border-radius:6px;background:linear-gradient(150deg,var(--accent),color-mix(in srgb,var(--accent) 55%,var(--ink)));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 50%,transparent)}
+  .layers{margin-left:auto;display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg-2)}
+  .layers a{padding:8px 13px;font-size:.8rem;font-weight:650;color:var(--muted);text-decoration:none;display:flex;gap:8px;align-items:center;border-right:1px solid var(--line);transition:color .15s,background .15s}
+  .layers a:last-child{border-right:0}
+  .layers a:hover{color:var(--ink)}
+  .layers a[aria-current="page"]{background:var(--accent-tint);color:var(--accent-ink)}
+  .layers a .ln{font-family:var(--font-mono);opacity:.65;font-size:.74rem}
+  .layers a:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  @media (max-width:680px){.layers a .lt{display:none}.layers a{padding:8px 11px}}
+
+  /* layout: sticky side nav + content */
+  .shell{display:grid;grid-template-columns:220px 1fr;gap:40px;padding:40px 0 20px}
+  @media (max-width:900px){.shell{grid-template-columns:1fr;gap:8px}}
+  .sidenav{position:sticky;top:80px;align-self:start;height:max-content}
+  @media (max-width:900px){.sidenav{position:static;border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--bg-2);margin-bottom:14px}}
+  .sidenav .lbl{font-family:var(--font-mono);font-size:.68rem;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);font-weight:650;margin:0 0 10px;padding-left:11px}
+  .sidenav a{display:block;text-decoration:none;color:var(--muted);font-size:.88rem;font-weight:550;padding:7px 11px;border-radius:8px;border-left:2px solid transparent;transition:color .14s,background .14s}
+  .sidenav a:hover{color:var(--ink);background:var(--accent-tint)}
+  .sidenav a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .doc{min-width:0}
+  .doc-hd{margin-bottom:14px}
+  .kicker{font-family:var(--font-mono);font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);font-weight:650}
+  .doc-hd h1{font-size:clamp(2rem,4vw,2.7rem);letter-spacing:-.025em;font-weight:800;margin:.3em 0 .25em;text-wrap:balance}
+  .doc-hd p{color:var(--muted);margin:0;max-width:64ch;font-size:1.03rem}
+
+  h2.sec{font-size:1.5rem;letter-spacing:-.02em;font-weight:770;margin:52px 0 6px;padding-top:14px;border-top:1px solid var(--line);scroll-margin-top:76px}
+  h2.sec:first-of-type{border-top:0}
+  .lead{color:var(--ink-soft);margin:0 0 18px;max-width:70ch}
+  h3.sub{font-size:1.06rem;font-weight:720;margin:26px 0 8px}
+  p{color:var(--ink-soft)}
+
+  .panel{background:var(--bg-2);border:1px solid var(--line);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow)}
+
+  /* pipeline */
+  .pipe-scroll{overflow-x:auto;padding-bottom:6px}
+  .pipe{display:flex;align-items:stretch;min-width:720px}
+  .node{flex:1;background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .node .k{font-family:var(--font-mono);font-size:.7rem;color:var(--accent-ink);font-weight:650}
+  .node .t{font-weight:700;margin-top:4px;font-size:.94rem}
+  .node .d{color:var(--muted);font-size:.78rem;margin-top:2px}
+  .arrow{display:flex;align-items:center;justify-content:center;width:30px;color:var(--line-strong);flex:none}
+
+  /* generic table */
+  .tbl-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;margin-top:10px}
+  table{border-collapse:collapse;width:100%;min-width:520px;font-size:.9rem}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--panel);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;font-family:var(--font-mono)}
+  tr:last-child td{border-bottom:0}
+  td code{font-size:.82rem;color:var(--accent-ink)}
+  td .desc{color:var(--muted)}
+
+  /* code block */
+  pre.code{margin:12px 0 0;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 18px;overflow-x:auto;font-family:var(--font-mono);font-size:.83rem;line-height:1.65;color:var(--ink-soft)}
+  pre.code .c{color:var(--muted)}
+  pre.code .k{color:var(--accent-ink);font-weight:600}
+  .inline{font-family:var(--font-mono);font-size:.85em;background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--ink-soft)}
+
+  /* trust tiers */
+  .tiers{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:12px}
+  @media (max-width:760px){.tiers{grid-template-columns:1fr 1fr}}
+  .tierc{border:1px solid var(--line);border-radius:12px;padding:14px 15px;background:var(--bg-2)}
+  .tierc .n{font-family:var(--font-mono);font-weight:700;font-size:.82rem;color:var(--accent-ink);letter-spacing:.04em}
+  .tierc p{margin:6px 0 0;font-size:.85rem;color:var(--muted)}
+
+  /* rule catalogue */
+  .legend{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 20px}
+  .sev{font-family:var(--font-mono);font-size:.66rem;font-weight:700;letter-spacing:.05em;padding:3px 8px;border-radius:5px;border:1px solid;white-space:nowrap}
+  .sev.c{color:var(--block);background:var(--block-tint);border-color:color-mix(in srgb,var(--block) 34%,var(--line))}
+  .sev.h{color:var(--high);background:var(--high-tint);border-color:color-mix(in srgb,var(--high) 34%,var(--line))}
+  .sev.m{color:var(--warn);background:var(--warn-tint);border-color:color-mix(in srgb,var(--warn) 34%,var(--line))}
+  .sev.l{color:var(--muted);background:var(--panel);border-color:var(--line)}
+  .sev.i{color:var(--accent-ink);background:var(--accent-tint);border-color:color-mix(in srgb,var(--accent) 30%,var(--line))}
+  .sev.v{color:var(--accent-ink);background:var(--accent-tint);border-color:color-mix(in srgb,var(--accent) 30%,var(--line))}
+
+  .catgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:6px}
+  @media (max-width:820px){.catgrid{grid-template-columns:1fr}}
+  .cat{border:1px solid var(--line);border-radius:14px;background:var(--bg-2);padding:16px 17px;box-shadow:var(--shadow)}
+  .cat-head{display:flex;align-items:center;gap:10px}
+  .cat-head h3{margin:0;font-size:1.02rem;font-weight:730;letter-spacing:-.01em}
+  .cat-count{margin-left:auto;font-family:var(--font-mono);font-size:.72rem;font-weight:700;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:2px 9px}
+  .cat-desc{margin:6px 0 12px;color:var(--muted);font-size:.85rem}
+  .rule-list{display:flex;flex-direction:column;gap:9px}
+  .rule{display:grid;grid-template-columns:auto 1fr auto;gap:8px 10px;align-items:baseline;padding-bottom:9px;border-bottom:1px dashed var(--line)}
+  .rule:last-child{border-bottom:0;padding-bottom:0}
+  .rid{font-size:.76rem;color:var(--accent-ink);font-weight:600;white-space:nowrap}
+  .rttl{font-size:.88rem;color:var(--ink);font-weight:550}
+  .refs{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:5px}
+  .ref{font-family:var(--font-mono);font-size:.66rem;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:2px 6px}
+
+  /* framework glossary */
+  .gloss{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px}
+  @media (max-width:760px){.gloss{grid-template-columns:1fr}}
+  .gl{border:1px solid var(--line);border-radius:12px;padding:15px 16px;background:var(--bg-2)}
+  .gl b{display:block;font-size:.95rem;margin-bottom:3px}
+  .gl code{font-size:.72rem;color:var(--accent-ink)}
+  .gl p{margin:6px 0 0;font-size:.86rem;color:var(--muted)}
+
+  .doclist{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+  @media (max-width:680px){.doclist{grid-template-columns:1fr}}
+  .doclist a{display:block;text-decoration:none;border:1px solid var(--line);border-radius:12px;padding:15px 16px;background:var(--bg-2);transition:border-color .15s,transform .15s}
+  .doclist a:hover{border-color:var(--accent);transform:translateY(-1px)}
+  .doclist b{display:block;font-size:.95rem}
+  .doclist span{color:var(--muted);font-size:.85rem}
+  .doclist code{color:var(--accent-ink);font-size:.78rem}
+
+  .note{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:10px;background:var(--panel);padding:16px 18px;margin-top:22px}
+  .note p{margin:0;color:var(--ink-soft);font-size:.92rem}
+  .note b{color:var(--ink)}
+
+  footer{border-top:1px solid var(--line);padding:32px 0 48px;color:var(--muted);margin-top:40px}
+  footer .wrap{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between}
+  .foot-meta{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:.85rem}
+  .foot-meta code{background:var(--bg-2);border:1px solid var(--line);border-radius:6px;padding:3px 8px;color:var(--ink-soft)}
+  .foot-meta a{color:var(--accent-ink);text-decoration:none;font-weight:600}
+  .foot-meta a:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="wrap">
+      <span class="brand"><span class="mark" aria-hidden="true"></span> AIAgentFirewall</span>
+      <nav class="layers" aria-label="Documentation layers">
+        <a href="index.html"><span class="ln">01</span><span class="lt">Overview</span></a>
+        <a href="features.html"><span class="ln">02</span><span class="lt">Features</span></a>
+        <a href="reference.html" aria-current="page"><span class="ln">03</span><span class="lt">Reference</span></a>
+      </nav>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="shell">
+
+      <aside class="sidenav" aria-label="On this page">
+        <p class="lbl">On this page</p>
+        <a href="#architecture">Architecture</a>
+        <a href="#tiers">The four tiers</a>
+        <a href="#commands">Commands &amp; flags</a>
+        <a href="#trust">Trust tiers</a>
+        <a href="#policy">Policy &amp; verdicts</a>
+        <a href="#catalogue">Detection catalogue</a>
+        <a href="#frameworks">Framework glossary</a>
+        <a href="#guardrails">Guardrails API</a>
+        <a href="#docs">Source docs</a>
+      </aside>
+
+      <main class="doc">
+        <div class="doc-hd">
+          <span class="kicker">Layer 03 · Reference</span>
+          <h1>How every piece works.</h1>
+          <p>The deep layer: the pipeline, every command and flag, the full detection catalogue with framework mappings, and the enforcement API. Built from the tool's own <span class="inline">afw rules</span> output at v1.3.1.</p>
+        </div>
+
+        <!-- ARCHITECTURE -->
+        <h2 class="sec" id="architecture">Architecture &amp; data flow</h2>
+        <p class="lead">Every scan runs one pipeline. Loaders turn a target into an <em>Artifact</em>; the rule engine produces <em>findings</em>; the policy turns findings into a <em>verdict</em>. Nothing is executed to be inspected.</p>
+        <div class="pipe-scroll">
+          <div class="pipe">
+            <div class="node"><div class="k">input</div><div class="t">Target</div><div class="d">dir · file · .zip</div></div>
+            <div class="arrow">→</div>
+            <div class="node"><div class="k">loaders</div><div class="t">Artifact</div><div class="d">files + declared tools/perms</div></div>
+            <div class="arrow">→</div>
+            <div class="node"><div class="k">engine</div><div class="t">Rules</div><div class="d">signatures + structural</div></div>
+            <div class="arrow">→</div>
+            <div class="node"><div class="k">output</div><div class="t">Findings</div><div class="d">severity + framework refs</div></div>
+            <div class="arrow">→</div>
+            <div class="node"><div class="k">policy</div><div class="t">Verdict</div><div class="d">allow · warn · block</div></div>
+          </div>
+        </div>
+        <h3 class="sub">The two rule kinds</h3>
+        <p>Most detections are regex <b>signatures</b> — easy to audit and extend (adding one is usually a single <span class="inline">compile_sig(...)</span> call). <b>Structural</b> rules handle what regex can't: prompt-injection phrasing, invisible-Unicode and entropy analysis, permission overreach, and stateful baseline diffing.</p>
+
+        <!-- TIERS -->
+        <h2 class="sec" id="tiers">The four defense tiers</h2>
+        <p class="lead">Modelled on a real firewall's layered stack. The first three read artifacts and never execute them; the runtime tier controls what a running process can reach and say.</p>
+        <div class="tbl-scroll">
+          <table>
+            <thead><tr><th>Tier</th><th>What it does</th><th>Entry point</th></tr></thead>
+            <tbody>
+              <tr><td><b>Pre-install</b><div class="desc">static</div></td><td>Scan code, manifests and model-facing text for known dangers.</td><td><code>afw scan</code> / <code>verify</code> / <code>install</code></td></tr>
+              <tr><td><b>Install-time</b><div class="desc">stateful</div></td><td>Pin an approved baseline; re-verify every update for silent drift.</td><td><code>afw pin</code> · <code>--baseline</code></td></tr>
+              <tr><td><b>Trust zone</b><div class="desc">provenance</div></td><td>Assign a trust tier from signatures/SBOM; match against IoC feeds.</td><td><code>--verify-signatures</code> · <code>--intel</code></td></tr>
+              <tr><td><b>Runtime</b><div class="desc">dynamic</div></td><td>Default-deny egress, MCP tool-call proxy, kernel network isolation.</td><td><code>afw run</code> · <code>afw mcp-proxy</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- COMMANDS -->
+        <h2 class="sec" id="commands">Commands &amp; flags</h2>
+        <p class="lead">Every command takes a directory, a single file, or a <span class="inline">.zip</span>. Exit codes: <b>0</b> allow/warn · <b>2</b> block · <b>1</b> error.</p>
+        <div class="tbl-scroll">
+          <table>
+            <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+            <tbody>
+              <tr><td><code>afw scan &lt;path&gt;…</code></td><td>Inspect artifacts and print a report; exit reflects the worst verdict.</td></tr>
+              <tr><td><code>afw verify &lt;path&gt;…</code></td><td>CI gate — exit <code>2</code> on any BLOCK (<code>--fail-on-warn</code> to also fail on warnings).</td></tr>
+              <tr><td><code>afw install &lt;path&gt; --to &lt;dir&gt;</code></td><td>Pre-check, then copy into place only if it passes (<code>--force</code> to override).</td></tr>
+              <tr><td><code>afw pin &lt;path&gt;</code></td><td>Record a trusted baseline (<code>afw.lock</code>) for later rug-pull detection.</td></tr>
+              <tr><td><code>afw run --allow &lt;host&gt; -- &lt;cmd&gt;</code></td><td>Run behind a default-deny egress firewall (add <code>--isolate</code> for kernel-enforced).</td></tr>
+              <tr><td><code>afw mcp-proxy -- &lt;server&gt;</code></td><td>Inspect / redact / block an MCP server's JSON-RPC tool calls and results live.</td></tr>
+              <tr><td><code>afw serve</code></td><td>Launch the local web UI (loopback-only, token-protected).</td></tr>
+              <tr><td><code>afw watch &lt;dir&gt;</code></td><td>Poll a directory and scan new/modified artifacts as they land.</td></tr>
+              <tr><td><code>afw rules</code></td><td>List every detection with ID, severity, category and framework coverage.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3 class="sub">Common flags</h3>
+        <pre class="code"><span class="c"># output &amp; policy</span>
+--format text|json|sarif      <span class="c"># sarif → GitHub code-scanning</span>
+--policy &lt;file&gt;                <span class="c"># JSON/YAML policy file</span>
+--strict                      <span class="c"># block on MEDIUM and above</span>
+--fail-on &lt;SEVERITY&gt;           <span class="c"># custom block threshold</span>
+--ignore &lt;RULE_ID&gt;             <span class="c"># suppress a rule or category</span>
+--baseline &lt;lock&gt;             <span class="c"># diff against a pinned afw.lock</span>
+
+<span class="c"># trust &amp; intel</span>
+--intel &lt;path&gt;                 <span class="c"># add IoC feeds (JSON or names/domains/hashes/signers .txt)</span>
+--no-intel                    <span class="c"># disable the bundled seed feed</span>
+--verify-signatures --identity &lt;id&gt;   <span class="c"># cryptographic provenance</span>
+--no-tighten-untrusted        <span class="c"># don't penalise unsigned artifacts</span>
+
+<span class="c"># runtime containment (afw run)</span>
+--allow &lt;host&gt;  --allow-port &lt;n&gt;  --allow-loopback
+--isolate                     <span class="c"># kernel network namespace (zero-network)</span>
+--fail-on-egress              <span class="c"># exit non-zero if anything was blocked</span></pre>
+
+        <!-- TRUST TIERS -->
+        <h2 class="sec" id="trust">Trust tiers</h2>
+        <p class="lead">Each artifact gets a tier from the provenance the scanner can find. Low-trust artifacts are held to a stricter policy automatically (unless you pass <span class="inline">--no-tighten-untrusted</span>).</p>
+        <div class="tiers">
+          <div class="tierc"><div class="n">UNTRUSTED</div><p>No signature, attestation or baseline. Block threshold tightens one level.</p></div>
+          <div class="tierc"><div class="n">DECLARED</div><p>A signature or SBOM is present but not cryptographically verified.</p></div>
+          <div class="tierc"><div class="n">PINNED</div><p>You hold a local <code>afw.lock</code> for it (via <code>afw pin</code>).</p></div>
+          <div class="tierc"><div class="n">VERIFIED</div><p>Signature cryptographically verified against an expected identity.</p></div>
+        </div>
+
+        <!-- POLICY -->
+        <h2 class="sec" id="policy">Policy &amp; verdicts</h2>
+        <p class="lead">Findings have a severity — <b>INFO · LOW · MEDIUM · HIGH · CRITICAL</b> — and the policy maps them to <b>ALLOW</b>, <b>WARN</b> or <b>BLOCK</b>. Default blocks on HIGH+.</p>
+        <pre class="code"><span class="c"># policy.yaml</span>
+<span class="k">block_severity</span>: HIGH          <span class="c"># INFO | LOW | MEDIUM | HIGH | CRITICAL</span>
+<span class="k">warn_severity</span>: LOW
+<span class="k">ignore</span>: [AFW-PERM-002]      <span class="c"># accept an expected finding</span>
+<span class="k">warn_only_categories</span>: [install-hook]
+<span class="k">tighten_untrusted</span>: true      <span class="c"># stricter bar for unsigned/unpinned</span></pre>
+        <p>Policy files are JSON or YAML (the simple schema needs no dependency; <span class="inline">pip install AIAgentFirewall[yaml]</span> for full YAML). Output formats: <b>text</b> (colourised), <b>json</b> (the <span class="inline">ScanResult</span> schema), <b>sarif</b> (code-scanning dashboards).</p>
+
+        <!-- CATALOGUE -->
+        <h2 class="sec" id="catalogue">Detection catalogue</h2>
+        <p class="lead">All <b>59 detections</b> across <b>23 categories</b>, each mapped to an industry framework. IDs ending in <span class="inline">-*</span> are structural rules that emit a family of findings; <span class="inline">varies</span> means severity depends on what's matched.</p>
+        <div class="legend" aria-hidden="true">
+          <span class="sev c">CRITICAL</span><span class="sev h">HIGH</span><span class="sev m">MEDIUM</span><span class="sev l">LOW</span><span class="sev i">INFO</span><span class="sev v">VARIES</span>
+        </div>
+
+        <div class="catgrid">
+<div class="cat">
+<div class="cat-head"><h3>Secret &amp; credential access</h3><span class="cat-count">6</span></div>
+<p class="cat-desc">Reads SSH/AWS/cloud keys, .env, dumps environment</p>
+<div class="rule-list">
+<div class="rule"><code class="rid">AFW-SEC-001</code><span class="rttl">Reads SSH private keys</span><span class="sev c">CRITICAL</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span><span class="ref">MITRE-ATLAS:Credential-Access</span></span></div>
+<div class="rule"><code class="rid">AFW-SEC-002</code><span class="rttl">Reads cloud credential files</span><span class="sev c">CRITICAL</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span><span class="ref">MITRE-ATLAS:Credential-Access</span></span></div>
+<div class="rule"><code class="rid">AFW-SEC-003</code><span class="rttl">Dumps environment variables</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span><span class="ref">MITRE-ATLAS:Credential-Access</span></span></div>
+<div class="rule"><code class="rid">AFW-SEC-004</code><span class="rttl">Targets provider API keys</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span><span class="ref">MITRE-ATLAS:Credential-Access</span></span></div>
+<div class="rule"><code class="rid">AFW-SEC-005</code><span class="rttl">Reads dotenv / secret files</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span><span class="ref">MITRE-ATLAS:Credential-Access</span></span></div>
+<div class="rule"><code class="rid">AFW-SEC-006</code><span class="rttl">Accesses OS keychain / secret store</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span><span class="ref">MITRE-ATLAS:Credential-Access</span></span></div>
+</div></div>
+<div class="cat">
+<div class="cat-head"><h3>Embedded credentials</h3><span class="cat-count">6</span></div>
+<p class="cat-desc">Private keys / API tokens shipped inside the artifact</p>
+<div class="rule-list">
+<div class="rule"><code class="rid">AFW-KEY-001</code><span class="rttl">Bundled private key</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule"><code class="rid">AFW-KEY-002</code><span class="rttl">AWS access key id</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule"><code class="rid">AFW-KEY-003</code><span class="rttl">GitHub / GitLab token</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule"><code class="rid">AFW-KEY-004</code><span class="rttl">AI provider API key</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule"><code class="rid">AFW-KEY-005</code><span class="rttl">Slack token</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule"><code class="rid">AFW-KEY-006</code><span class="rttl">Generic secret assignment</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+</div></div>
+<div class="cat">
+<div class="cat-head"><h3>Data exfiltration</h3><span class="cat-count">7</span></div>
+<p class="cat-desc">Uploads to webhooks/paste sites, raw-IP egress, reverse shells</p>
+<div class="rule-list">
+<div class="rule"><code class="rid">AFW-NET-001</code><span class="rttl">Exfiltration to paste/webhook service</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Exfiltration</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule"><code class="rid">AFW-NET-002</code><span class="rttl">Pipes local data to the network</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Exfiltration</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule"><code class="rid">AFW-NET-003</code><span class="rttl">Raw IP address egress</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">MITRE-ATLAS:Exfiltration</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule"><code class="rid">AFW-NET-004</code><span class="rttl">Reverse shell pattern</span><span class="sev c">CRITICAL</span><span class="refs"><span class="ref">MITRE-ATLAS:Exfiltration</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule"><code class="rid">AFW-NET-005</code><span class="rttl">DNS-based exfiltration</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Exfiltration</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule"><code class="rid">AFW-NET-006</code><span class="rttl">Suspicious outbound POST of data</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">MITRE-ATLAS:Exfiltration</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule"><code class="rid">AFW-NET-007</code><span class="rttl">Auto-fetched image/link with a dynamic URL (exfil channel)</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">MITRE-ATLAS:Exfiltration</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span><span class="ref">OWASP-LLM01:Prompt-Injection</span></span></div>
+</div></div>
+<div class="cat">
+<div class="cat-head"><h3>Obfuscation &amp; dynamic exec</h3><span class="cat-count">6</span></div>
+<p class="cat-desc">curl|bash, base64|sh, eval/exec on runtime strings</p>
+<div class="rule-list">
+<div class="rule"><code class="rid">AFW-BLOB-*</code><span class="rttl">High-entropy packed / encoded blob</span><span class="sev v">varies</span><span class="refs"></span></div>
+<div class="rule"><code class="rid">AFW-OBF-001</code><span class="rttl">Download-and-execute (curl | bash)</span><span class="sev c">CRITICAL</span><span class="refs"><span class="ref">MITRE-ATLAS:Execution</span><span class="ref">MITRE-ATLAS:Defense-Evasion</span></span></div>
+<div class="rule"><code class="rid">AFW-OBF-002</code><span class="rttl">Dynamic code execution</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Execution</span><span class="ref">MITRE-ATLAS:Defense-Evasion</span></span></div>
+<div class="rule"><code class="rid">AFW-OBF-003</code><span class="rttl">Base64 decode-and-run</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Execution</span><span class="ref">MITRE-ATLAS:Defense-Evasion</span></span></div>
+<div class="rule"><code class="rid">AFW-OBF-004</code><span class="rttl">Hex / escape-encoded payload</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">MITRE-ATLAS:Execution</span><span class="ref">MITRE-ATLAS:Defense-Evasion</span></span></div>
+<div class="rule"><code class="rid">AFW-OBF-005</code><span class="rttl">Shell obfuscation via IFS / variable splicing</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">MITRE-ATLAS:Execution</span><span class="ref">MITRE-ATLAS:Defense-Evasion</span></span></div>
+</div></div>
+<div class="cat">
+<div class="cat-head"><h3>Unsafe deserialization</h3><span class="cat-count">3</span></div>
+<p class="cat-desc">pickle/torch.load, unsafe yaml, bundled weight files</p>
+<div class="rule-list">
+<div class="rule"><code class="rid">AFW-DSR-001</code><span class="rttl">Unsafe pickle deserialization</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM04:Data-and-Model-Poisoning</span><span class="ref">MITRE-ATLAS:Execution</span></span></div>
+<div class="rule"><code class="rid">AFW-DSR-002</code><span class="rttl">Loads model weights that can execute code</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">OWASP-LLM04:Data-and-Model-Poisoning</span><span class="ref">MITRE-ATLAS:Execution</span></span></div>
+<div class="rule"><code class="rid">AFW-DSR-003</code><span class="rttl">Bundled pickle / weight file</span><span class="sev l">LOW</span><span class="refs"><span class="ref">OWASP-LLM04:Data-and-Model-Poisoning</span><span class="ref">MITRE-ATLAS:Execution</span></span></div>
+</div></div>
+<div class="cat">
+<div class="cat-head"><h3>Destructive actions</h3><span class="cat-count">5</span></div>
+<p class="cat-desc">rm -rf, mkfs, fork bombs, disabling TLS/firewalls, miners</p>
+<div class="rule-list">
+<div class="rule"><code class="rid">AFW-DES-001</code><span class="rttl">Recursive force delete of a broad path</span><span class="sev c">CRITICAL</span><span class="refs"><span class="ref">MITRE-ATLAS:Impact</span><span class="ref">OWASP-LLM06:Excessive-Agency</span></span></div>
+<div class="rule"><code class="rid">AFW-DES-002</code><span class="rttl">Disk / filesystem destruction</span><span class="sev c">CRITICAL</span><span class="refs"><span class="ref">MITRE-ATLAS:Impact</span><span class="ref">OWASP-LLM06:Excessive-Agency</span></span></div>
+<div class="rule"><code class="rid">AFW-DES-003</code><span class="rttl">Weakens system security posture</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Impact</span><span class="ref">OWASP-LLM06:Excessive-Agency</span></span></div>
+<div class="rule"><code class="rid">AFW-DES-004</code><span class="rttl">Crypto-miner / resource abuse</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Impact</span><span class="ref">OWASP-LLM06:Excessive-Agency</span></span></div>
+<div class="rule"><code class="rid">AFW-DES-005</code><span class="rttl">Persistence via cron / autostart</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Impact</span><span class="ref">OWASP-LLM06:Excessive-Agency</span></span></div>
+</div></div>
+<div class="cat">
+<div class="cat-head"><h3>Filesystem overreach</h3><span class="cat-count">3</span></div>
+<p class="cat-desc">Broad/sensitive filesystem writes and reads</p>
+<div class="rule-list">
+<div class="rule"><code class="rid">AFW-FS-001</code><span class="rttl">Reads browser / app credential stores</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">MITRE-ATLAS:Credential-Access</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule"><code class="rid">AFW-FS-002</code><span class="rttl">Reads shell / command history</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">MITRE-ATLAS:Credential-Access</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+<div class="rule"><code class="rid">AFW-FS-003</code><span class="rttl">Broad home-directory sweep</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">MITRE-ATLAS:Credential-Access</span><span class="ref">OWASP-LLM02:Sensitive-Information-Disclosure</span></span></div>
+</div></div>
+<div class="cat">
+<div class="cat-head"><h3>Anti-forensics</h3><span class="cat-count">2</span></div>
+<p class="cat-desc">Clearing shell history, deleting logs</p>
+<div class="rule-list">
+<div class="rule"><code class="rid">AFW-AF-001</code><span class="rttl">Clears shell history</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">OWASP-Agentic:Repudiation-and-Untraceability</span><span class="ref">MITRE-ATLAS:Defense-Evasion</span></span></div>
+<div class="rule"><code class="rid">AFW-AF-002</code><span class="rttl">Deletes or tampers with system logs</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-Agentic:Repudiation-and-Untraceability</span><span class="ref">MITRE-ATLAS:Defense-Evasion</span></span></div>
+</div></div>
+<div class="cat">
+<div class="cat-head"><h3>Prompt injection</h3><span class="cat-count">1</span></div>
+<p class="cat-desc">"ignore previous instructions", "do not tell the user"</p>
+<div class="rule-list">
+<div class="rule"><code class="rid">AFW-INJ-*</code><span class="rttl">Prompt-injection phrasing in model-facing text</span><span class="sev v">varies</span><span class="refs"><span class="ref">OWASP-LLM01:Prompt-Injection</span></span></div>
+</div></div>
+<div class="cat">
+<div class="cat-head"><h3>Tool poisoning</h3><span class="cat-count">1</span></div>
+<p class="cat-desc">Hidden directives / secrets inside tool descriptions</p>
+<div class="rule-list">
+<div class="rule"><code class="rid">AFW-TPZ-*</code><span class="rttl">Hidden directive / secret in a tool description</span><span class="sev v">varies</span><span class="refs"><span class="ref">MCP:Tool-Poisoning</span></span></div>
+</div></div>
+<div class="cat">
+<div class="cat-head"><h3>Memory / context poisoning</h3><span class="cat-count">2</span></div>
+<p class="cat-desc">Writes to CLAUDE.md, .cursorrules, auto-loaded config</p>
+<div class="rule-list">
+<div class="rule"><code class="rid">AFW-MEM-001</code><span class="rttl">Writes to an agent instruction file</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-ASI06:Memory-and-Context-Poisoning</span><span class="ref">OWASP-LLM01:Prompt-Injection</span></span></div>
+<div class="rule"><code class="rid">AFW-MEM-002</code><span class="rttl">Modifies agent / MCP configuration</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-ASI06:Memory-and-Context-Poisoning</span><span class="ref">OWASP-LLM01:Prompt-Injection</span></span></div>
+</div></div>
+<div class="cat">
+<div class="cat-head"><h3>Hidden content</h3><span class="cat-count">1</span></div>
+<p class="cat-desc">Zero-width chars, bidi override, invisible Unicode-Tag</p>
+<div class="rule-list">
+<div class="rule"><code class="rid">AFW-UNI-*</code><span class="rttl">Invisible / bidirectional Unicode trickery</span><span class="sev v">varies</span><span class="refs"><span class="ref">OWASP-LLM01:Prompt-Injection</span></span></div>
+</div></div>
+<div class="cat">
+<div class="cat-head"><h3>Improper output handling</h3><span class="cat-count">2</span></div>
+<p class="cat-desc">Model output into a shell/SQL/HTML sink</p>
+<div class="rule-list">
+<div class="rule"><code class="rid">AFW-OUT-001</code><span class="rttl">Model output flows into a shell/interpreter</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM05:Improper-Output-Handling</span></span></div>
+<div class="rule"><code class="rid">AFW-OUT-002</code><span class="rttl">Unsanitized output into SQL / HTML</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">OWASP-LLM05:Improper-Output-Handling</span></span></div>
+</div></div>
+<div class="cat">
+<div class="cat-head"><h3>Permission overreach</h3><span class="cat-count">1</span></div>
+<p class="cat-desc">tools:"*", unrestricted Bash(*), silent grants</p>
+<div class="rule-list">
+<div class="rule"><code class="rid">AFW-PERM-*</code><span class="rttl">Over-broad tool / permission grant</span><span class="sev v">varies</span><span class="refs"><span class="ref">OWASP-LLM06:Excessive-Agency</span></span></div>
+</div></div>
+<div class="cat">
+<div class="cat-head"><h3>Install hooks</h3><span class="cat-count">1</span></div>
+<p class="cat-desc">Silent setup scripts that run on install</p>
+<div class="rule-list">
+<div class="rule"><code class="rid">AFW-HOOK-*</code><span class="rttl">Silent install / setup hook</span><span class="sev v">varies</span><span class="refs"><span class="ref">SLSA:Build-Integrity</span></span></div>
+</div></div>
+<div class="cat">
+<div class="cat-head"><h3>Typosquatting</h3><span class="cat-count">1</span></div>
+<p class="cat-desc">Homoglyph / one-edit look-alike names</p>
+<div class="rule-list">
+<div class="rule"><code class="rid">AFW-SQT-*</code><span class="rttl">Homoglyph / near-miss look-alike name</span><span class="sev v">varies</span><span class="refs"><span class="ref">MITRE-ATLAS:Initial-Access</span></span></div>
+</div></div>
+<div class="cat">
+<div class="cat-head"><h3>Excessive agency</h3><span class="cat-count">3</span></div>
+<p class="cat-desc">User input driving code exec; unscoped agent</p>
+<div class="rule-list">
+<div class="rule"><code class="rid">AFW-AGENCY-001</code><span class="rttl">User input drives code execution</span><span class="sev c">CRITICAL</span><span class="refs"><span class="ref">OWASP-LLM06:Excessive-Agency</span><span class="ref">OWASP-ASI05:Unexpected-Code-Execution</span><span class="ref">OWASP-ASI02:Tool-Misuse-and-Exploitation</span></span></div>
+<div class="rule"><code class="rid">AFW-AGENCY-002</code><span class="rttl">Agent exposes a code-execution/shell tool</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-LLM06:Excessive-Agency</span><span class="ref">OWASP-ASI05:Unexpected-Code-Execution</span><span class="ref">OWASP-ASI02:Tool-Misuse-and-Exploitation</span></span></div>
+<div class="rule"><code class="rid">AFW-AGENCY-003</code><span class="rttl">System prompt grants unrestricted scope</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">OWASP-LLM06:Excessive-Agency</span><span class="ref">OWASP-ASI02:Tool-Misuse-and-Exploitation</span></span></div>
+</div></div>
+<div class="cat">
+<div class="cat-head"><h3>Broken authorization</h3><span class="cat-count">1</span></div>
+<p class="cat-desc">Action before the quota/authz check (TOCTOU)</p>
+<div class="rule-list">
+<div class="rule"><code class="rid">AFW-AUTHZ-*</code><span class="rttl">Check-after-act / client-only limit (business logic)</span><span class="sev v">varies</span><span class="refs"><span class="ref">OWASP-Agentic:Identity-and-Privilege-Abuse</span></span></div>
+</div></div>
+<div class="cat">
+<div class="cat-head"><h3>RAG / vector-store poisoning</h3><span class="cat-count">2</span></div>
+<p class="cat-desc">Untrusted content indexed for retrieval</p>
+<div class="rule-list">
+<div class="rule"><code class="rid">AFW-RAG-001</code><span class="rttl">Untrusted content written into a vector store / KB</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">OWASP-LLM08:Vector-and-Embedding-Weaknesses</span><span class="ref">OWASP-ASI06:Memory-and-Context-Poisoning</span></span></div>
+<div class="rule"><code class="rid">AFW-RAG-002</code><span class="rttl">Unvalidated web documents indexed into RAG</span><span class="sev m">MEDIUM</span><span class="refs"><span class="ref">OWASP-LLM08:Vector-and-Embedding-Weaknesses</span><span class="ref">OWASP-ASI06:Memory-and-Context-Poisoning</span></span></div>
+</div></div>
+<div class="cat">
+<div class="cat-head"><h3>Insecure inter-agent (A2A)</h3><span class="cat-count">2</span></div>
+<p class="cat-desc">No-auth agent cards, disabled signature checks</p>
+<div class="rule-list">
+<div class="rule"><code class="rid">AFW-A2A-001</code><span class="rttl">Agent-to-agent endpoint declared without authentication</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-ASI07:Insecure-Inter-Agent-Communication</span><span class="ref">OWASP-ASI03:Identity-and-Privilege-Abuse</span></span></div>
+<div class="rule"><code class="rid">AFW-A2A-002</code><span class="rttl">Inter-agent identity/signature verification disabled</span><span class="sev h">HIGH</span><span class="refs"><span class="ref">OWASP-ASI07:Insecure-Inter-Agent-Communication</span><span class="ref">OWASP-ASI03:Identity-and-Privilege-Abuse</span></span></div>
+</div></div>
+<div class="cat">
+<div class="cat-head"><h3>Rug pulls (stateful)</h3><span class="cat-count">1</span></div>
+<p class="cat-desc">Files/tools/permissions changed since baseline</p>
+<div class="rule-list">
+<div class="rule"><code class="rid">AFW-DRIFT-*</code><span class="rttl">Baseline drift / rug pull (--baseline)</span><span class="sev v">varies</span><span class="refs"><span class="ref">MCP:Rug-Pull</span><span class="ref">OWASP-ASI03:Identity-and-Privilege-Abuse</span></span></div>
+</div></div>
+<div class="cat">
+<div class="cat-head"><h3>Weak provenance</h3><span class="cat-count">1</span></div>
+<p class="cat-desc">Unsigned / unattested → lower trust tier</p>
+<div class="rule-list">
+<div class="rule"><code class="rid">AFW-PROV-*</code><span class="rttl">Provenance / trust tier</span><span class="sev i">INFO</span><span class="refs"><span class="ref">SLSA:Provenance-and-Integrity</span><span class="ref">SLSA:Unsigned-Artifact</span></span></div>
+</div></div>
+<div class="cat">
+<div class="cat-head"><h3>Known-bad IoCs</h3><span class="cat-count">1</span></div>
+<p class="cat-desc">Name/hash/domain/signer on a threat-intel feed</p>
+<div class="rule-list">
+<div class="rule"><code class="rid">AFW-IOC-*</code><span class="rttl">Threat-intel / IoC match, incl. slopsquatting (--intel)</span><span class="sev v">varies</span><span class="refs"><span class="ref">Threat-Intel:Known-Malicious-IoC</span><span class="ref">Threat-Intel:Revoked-Signer</span></span></div>
+</div></div>
+        </div>
+
+        <!-- FRAMEWORKS -->
+        <h2 class="sec" id="frameworks">Framework glossary</h2>
+        <p class="lead">Every finding cites at least one industry framework, so findings map to a language security teams already use.</p>
+        <div class="gloss">
+          <div class="gl"><b>OWASP Top 10 for LLM Apps</b> <code>OWASP-LLM01…10</code><p>The canonical LLM-application risk list — prompt injection, sensitive-information disclosure, improper output handling, data/model poisoning, vector-and-embedding weaknesses, excessive agency, and more.</p></div>
+          <div class="gl"><b>OWASP Top 10 for Agentic Apps (2026)</b> <code>OWASP-ASI01…10</code><p>The agent-specific list: tool misuse, identity/privilege abuse, unexpected code execution, memory-and-context poisoning, insecure inter-agent communication, and related agentic threats.</p></div>
+          <div class="gl"><b>MITRE ATLAS</b> <code>MITRE-ATLAS:*</code><p>Adversarial tactics &amp; techniques for AI systems — Credential-Access, Execution, Exfiltration, Defense-Evasion, Impact — the ATT&amp;CK analogue for ML.</p></div>
+          <div class="gl"><b>MCP threat research</b> <code>MCP:*</code><p>Model Context Protocol failure modes — tool poisoning and the rug-pull class where a tool's behavior or description mutates after approval.</p></div>
+          <div class="gl"><b>SLSA / supply chain</b> <code>SLSA:*</code><p>Supply-chain integrity levels — provenance, signed vs. unsigned artifacts, build integrity.</p></div>
+          <div class="gl"><b>Threat intel</b> <code>Threat-Intel:*</code><p>Indicator matches — known-malicious names/hashes/domains and revoked or impersonated signer identities.</p></div>
+        </div>
+
+        <!-- GUARDRAILS -->
+        <h2 class="sec" id="guardrails">Guardrails API (outbound)</h2>
+        <p class="lead">Detection finds the deployed-agent bugs; <span class="inline">agentfirewall.guardrails</span> enforces the fix at request time. Zero-dependency, embeddable.</p>
+        <pre class="code"><span class="k">from</span> agentfirewall.guardrails <span class="k">import</span> (
+    InputGuard, ScopePolicy, PreconditionGate, InMemoryQuota, taint,
+)
+
+<span class="c"># Confine the agent to its business tools; deny code exec.</span>
+guard = InputGuard(ScopePolicy.for_tools(<span class="k">"search_menu"</span>, <span class="k">"place_order"</span>))
+<span class="c"># Reserve quota BEFORE the agent runs, idempotent by request id.</span>
+gate  = PreconditionGate(InMemoryQuota(balances={<span class="k">"user-1"</span>: 5}))
+
+<span class="k">def</span> handle_chat(user_id, prompt, request_id):
+    guard.check_input(prompt).raise_if_blocked()
+    <span class="k">return</span> gate.run(user_id, <span class="k">lambda</span>: agent.run(prompt),
+                    idempotency_key=request_id)   <span class="c"># refresh can't replay</span>
+
+<span class="c"># Taint untrusted-derived data so it can't drive sensitive sinks.</span>
+retrieved = taint(vector_store.query(q))
+guard.check_tool_call(<span class="k">"send_email"</span>, {<span class="k">"body"</span>: retrieved}).raise_if_blocked()  <span class="c"># BLOCKED</span></pre>
+        <div class="tbl-scroll">
+          <table>
+            <thead><tr><th>Component</th><th>Enforces</th></tr></thead>
+            <tbody>
+              <tr><td><code>PreconditionGate</code></td><td>Atomic check-before-act quota + idempotent replay (kills the refresh token-burn). Refunds on failure.</td></tr>
+              <tr><td><code>InputGuard</code> / <code>ScopePolicy</code></td><td>Tool allowlist; denies code/shell tools and prompt-injection/exfiltration in inputs and arguments.</td></tr>
+              <tr><td><code>taint()</code> / <code>Tainted</code></td><td>CaMeL-style provenance — untrusted-derived data can't reach code-exec/email/http/sql/payment sinks.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="note"><p><b>Production note.</b> The bundled <span class="inline">InMemoryQuota</span> / <span class="inline">InMemoryIdempotencyStore</span> are single-process references — back them with Redis or a database behind the same interface for real deployments.</p></div>
+
+        <!-- SOURCE DOCS -->
+        <h2 class="sec" id="docs">Source docs &amp; extending</h2>
+        <p class="lead">The Markdown docs in the repo go deeper on internals and process.</p>
+        <div class="doclist">
+          <a href="USAGE.md"><b>USAGE.md</b><span>Task-oriented cookbook for every command, incl. the web UI.</span></a>
+          <a href="ARCHITECTURE.md"><b>ARCHITECTURE.md</b><span>Module map, data flow, and how to extend each layer.</span></a>
+          <a href="THREAT-MODEL.md"><b>THREAT-MODEL.md</b><span>Threat model, firewall-mechanics mapping, rule→framework table.</span></a>
+          <a href="ROADMAP.md"><b>ROADMAP.md</b><span>What's shipped and what's planned.</span></a>
+        </div>
+        <h3 class="sub">Adding a detection</h3>
+        <p>A regex detection is usually one line in <span class="inline">agentfirewall/rules/signatures.py</span>:</p>
+        <pre class="code">compile_sig(
+    <span class="k">"AFW-NET-099"</span>, <span class="k">"Contacts my-bad-host"</span>, Severity.HIGH,
+    <span class="k">r"my-bad-host\.example"</span>,
+    <span class="k">"Reaches a known-bad host."</span>,
+    <span class="k">"Remove this network call."</span>,
+)</pre>
+        <p>For non-regex logic, subclass <span class="inline">Rule</span> in <span class="inline">rules/structural.py</span> and register it. See <span class="inline">CONTRIBUTING.md</span>.</p>
+
+      </main>
+    </div>
+  </div>
+
+  <footer>
+    <div class="wrap">
+      <span class="brand"><span class="mark" aria-hidden="true"></span> AIAgentFirewall</span>
+      <div class="foot-meta">
+        <span><code>pip install AIAgentFirewall</code></span>
+        <a href="https://pypi.org/project/AIAgentFirewall/">PyPI</a>
+        <a href="https://github.com/mmedabo/agentfirewall">GitHub</a>
+        <span>MIT · v1.3.1</span>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

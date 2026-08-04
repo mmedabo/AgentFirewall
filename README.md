@@ -429,6 +429,17 @@ without failing). See [`action.yml`](action.yml) for all inputs.
 
 ## Documentation
 
+**📖 Start with the docs site** ([`docs/`](docs/README.md)) — three layers, so you can stop at the
+depth you need. Open `docs/index.html`, or `python3 -m http.server -d docs 8080`.
+
+| Layer | Page | For whom |
+|---|---|---|
+| **01 · Overview** | [`docs/index.html`](docs/index.html) | Plain-English intro — what this is and why it matters, no jargon |
+| **02 · Features** | [`docs/features.html`](docs/features.html) | Every capability: why it's needed, use cases, honest pros **and cons** |
+| **03 · Reference** | [`docs/reference.html`](docs/reference.html) | Architecture, all commands/flags, the full detection catalogue, framework glossary |
+
+And the Markdown references:
+
 | Doc | What's in it |
 |---|---|
 | [`docs/USAGE.md`](docs/USAGE.md) | Task-oriented cookbook for every command, incl. the web UI |
