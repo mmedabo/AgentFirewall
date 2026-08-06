@@ -6,6 +6,28 @@ All notable changes to AgentFirewall are documented here. This project follows
 
 ## [Unreleased]
 
+## [1.3.2] — Signature precision
+
+Fixes two false-positive classes found by scanning a real ~1000-file open-source
+TypeScript application. Both were reported from a single run; no detection
+coverage is lost.
+
+- **`.exec()` is regex matching, not code execution.** `\bexec\s*\(` also matches
+  `regex.exec(...)`, because `.` is a word boundary — so an ordinary
+  `marker.exec(body)` read as remote code execution. The execution site must now
+  not be a method call on a receiver; genuinely dangerous receivers
+  (`child_process.exec`, `execSync`, `execFile`, `new Function`) are matched
+  explicitly instead. Fixed in **three** rules that shared the pattern and all
+  fired on the same line: `AFW-AGENCY-001`, `AFW-OBF-002`, `AFW-OUT-001`.
+- **Naming a credential file is not reading one.** `AFW-SEC-002` flagged the
+  string `.npmrc` anywhere, including the Markdown heading `# .npmrc (pnpm)` in
+  vendored documentation. A read verb (`cat`, `readFileSync`, `curl`…) or a real
+  path/quote prefix (`~/`, `/`, `"`) is now required.
+- New `tests/test_precision.py` locks both classes in: every reported false
+  positive must stay silent, and every real detection (`exec(request.json[...])`,
+  `child_process.exec(...)`, `cat ~/.aws/credentials`, `fs.readFileSync('.npmrc')`)
+  must keep firing.
+
 ## [1.3.1] — Packaging: PyPI name
 
 First release published to PyPI under the distribution name **`AIAgentFirewall`**
@@ -171,7 +193,8 @@ package to Production/Stable, and is the first tagged/published version.
 - `scan` / `verify` / `install` / `watch` / `rules`; ALLOW/WARN/BLOCK policy;
   text / JSON / SARIF output. MIT licensed, zero required dependencies.
 
-[Unreleased]: https://github.com/mmedabo/agentfirewall/compare/v1.3.1...HEAD
+[Unreleased]: https://github.com/mmedabo/agentfirewall/compare/v1.3.2...HEAD
+[1.3.2]: https://github.com/mmedabo/agentfirewall/releases/tag/v1.3.2
 [1.3.1]: https://github.com/mmedabo/agentfirewall/releases/tag/v1.3.1
 [1.3.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v1.3.0
 [1.2.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v1.2.0

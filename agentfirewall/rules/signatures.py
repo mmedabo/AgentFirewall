@@ -29,8 +29,16 @@ SECRETS = PatternRule(
         ),
         compile_sig(
             "AFW-SEC-002", "Reads cloud credential files", S.CRITICAL,
-            r"\.aws/credentials|\.aws/config|\.config/gcloud|\.azure/|"
-            r"\.kube/config|\.docker/config\.json|\.npmrc|\.pypirc",
+            # Naming a credential file is not reading one. Require either a read
+            # verb nearby or a real path/quote prefix, so prose such as
+            # ``# .npmrc (pnpm)`` in documentation no longer fires.
+            r"(?:"
+            r"(?:cat|head|tail|strings|base64|xxd|scp|rsync|curl|wget|"
+            r"readFileSync|readFile|fopen|expanduser)\b[^\n]{0,40}?"
+            r"|[~/\"']|\$HOME|\$\{HOME\}|%USERPROFILE%"
+            r")"
+            r"(?:\.aws/credentials|\.aws/config|\.config/gcloud|\.azure/|"
+            r"\.kube/config|\.docker/config\.json|\.npmrc|\.pypirc)",
             "Reads cloud/registry credential files that grant account access.",
             "Remove reads of cloud credential stores.",
         ),
@@ -153,7 +161,13 @@ OBFUSCATION = PatternRule(
         ),
         compile_sig(
             "AFW-OBF-002", "Dynamic code execution", S.HIGH,
-            r"\beval\s*\(|\bexec\s*\(|\bFunction\s*\(\s*['\"]|"
+            # ``\bexec(`` also matches ``regex.exec(`` because ``.`` is a word
+            # boundary; require the call not to be a method on some receiver, and
+            # name the dangerous receivers explicitly instead.
+            r"(?<![.\w])(?:eval|exec)\s*\(|"
+            r"\b(?:child_process|cp|proc|shell|sh)\s*\.\s*exec(?:Sync|File)?\s*\(|"
+            r"(?<![.\w])exec(?:Sync|File)\s*\(|"
+            r"\bFunction\s*\(\s*['\"]|"
             r"new\s+Function\s*\(|subprocess\.[A-Za-z_]+\([^)]*shell\s*=\s*True",
             "Evaluates code built at runtime, a common way to hide payloads.",
             "Avoid eval/exec on dynamic strings; use explicit calls.",
@@ -352,10 +366,13 @@ OUTPUT_HANDLING = PatternRule(
     signatures=[
         compile_sig(
             "AFW-OUT-001", "Model output flows into a shell/interpreter", S.HIGH,
-            r"(?:(os\.system|subprocess\.[A-Za-z_]+|exec|eval)\s*\([^)]{0,80}"
+            # ``exec``/``eval`` must not be a method call on a receiver, so
+            # ``regex.exec(response)`` is not read as executing model output.
+            r"(?:(os\.system|subprocess\.[A-Za-z_]+|(?<![.\w])exec|(?<![.\w])eval)\s*\([^)]{0,80}"
             r"\b(completion|response|message|llm_?out\w*|model_?out\w*|answer|generated|reply)\b)"
             r"|(?:\b(completion|response|llm_?out\w*|model_?out\w*)\b[\w\[\].\"']*\s*"
-            r"[^\n]{0,20}(\||into)[^\n]{0,20}(os\.system|subprocess|\bexec\b|\beval\b|bash|sh\b))",
+            r"[^\n]{0,20}(\||into)[^\n]{0,20}"
+            r"(os\.system|subprocess|(?<![.\w])exec\b|(?<![.\w])eval\b|bash|sh\b))",
             "Feeds LLM output directly into command/dynamic execution.",
             "Never execute model output; validate and use structured, allow-listed actions.",
         ),
@@ -436,7 +453,18 @@ AGENT_AGENCY = PatternRule(
     signatures=[
         compile_sig(
             "AFW-AGENCY-001", "User input drives code execution", S.CRITICAL,
-            r"\b(exec|eval)\s*\(\s*[^)]*\b(user_input|user_message|user_msg|message|"
+            # The execution site must be a real one. A bare ``exec(``/``eval(``
+            # (Python builtin, JS global) is only accepted when NOT preceded by a
+            # dot, so ``regex.exec(body)`` -- overwhelmingly the meaning of
+            # ``.exec()`` in JS/TS -- no longer looks like code execution.
+            # Genuinely dangerous receivers are matched explicitly instead.
+            r"(?:"
+            r"(?<![.\w])(?:exec|eval)\s*\(|"
+            r"\b(?:child_process|cp|proc|shell|sh)\s*\.\s*exec(?:Sync|File)?\s*\(|"
+            r"(?<![.\w])exec(?:Sync|File)\s*\(|"
+            r"new\s+Function\s*\("
+            r")"
+            r"\s*[^)]*\b(user_input|user_message|user_msg|message|"
             r"prompt|query|chat|content|body|params|req\.\w+|request\.\w+|args\[)",
             "Executes code built from user/request input — an end user can run arbitrary "
             "code through the agent (excessive agency / RCE).",
