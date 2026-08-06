@@ -2,7 +2,7 @@
 
 ## The website
 
-**Live at → https://mmedabo.github.io/AgentFirewall/**
+**Live at → https://mmedabo.github.io/AIAgentFirewall/**
 
 The site lives at the **repository root** (`index.html`, `features.html`,
 `reference.html`, plus `fonts/` and `favicon.svg`), which is where GitHub Pages

@@ -27,9 +27,9 @@ yaml = ["PyYAML>=5.1"]
 dev = ["pytest>=7", "PyYAML>=5.1"]
 
 [project.urls]
-Homepage = "https://github.com/mmedabo/agentfirewall"
-Repository = "https://github.com/mmedabo/agentfirewall"
-Issues = "https://github.com/mmedabo/agentfirewall/issues"
+Homepage = "https://github.com/mmedabo/AIAgentFirewall"
+Repository = "https://github.com/mmedabo/AIAgentFirewall"
+Issues = "https://github.com/mmedabo/AIAgentFirewall/issues"
 
 [project.scripts]
 afw = "agentfirewall.cli:main"

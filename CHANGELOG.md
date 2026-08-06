@@ -193,19 +193,19 @@ package to Production/Stable, and is the first tagged/published version.
 - `scan` / `verify` / `install` / `watch` / `rules`; ALLOW/WARN/BLOCK policy;
   text / JSON / SARIF output. MIT licensed, zero required dependencies.
 
-[Unreleased]: https://github.com/mmedabo/agentfirewall/compare/v1.3.2...HEAD
-[1.3.2]: https://github.com/mmedabo/agentfirewall/releases/tag/v1.3.2
-[1.3.1]: https://github.com/mmedabo/agentfirewall/releases/tag/v1.3.1
-[1.3.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v1.3.0
-[1.2.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v1.2.0
-[1.1.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v1.1.0
-[1.0.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v1.0.0
-[0.9.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.9.0
-[0.8.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.8.0
-[0.7.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.7.0
-[0.6.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.6.0
-[0.5.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.5.0
-[0.4.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.4.0
-[0.3.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.3.0
-[0.2.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.2.0
-[0.1.0]: https://github.com/mmedabo/agentfirewall/releases/tag/v0.1.0
+[Unreleased]: https://github.com/mmedabo/AIAgentFirewall/compare/v1.3.2...HEAD
+[1.3.2]: https://github.com/mmedabo/AIAgentFirewall/releases/tag/v1.3.2
+[1.3.1]: https://github.com/mmedabo/AIAgentFirewall/releases/tag/v1.3.1
+[1.3.0]: https://github.com/mmedabo/AIAgentFirewall/releases/tag/v1.3.0
+[1.2.0]: https://github.com/mmedabo/AIAgentFirewall/releases/tag/v1.2.0
+[1.1.0]: https://github.com/mmedabo/AIAgentFirewall/releases/tag/v1.1.0
+[1.0.0]: https://github.com/mmedabo/AIAgentFirewall/releases/tag/v1.0.0
+[0.9.0]: https://github.com/mmedabo/AIAgentFirewall/releases/tag/v0.9.0
+[0.8.0]: https://github.com/mmedabo/AIAgentFirewall/releases/tag/v0.8.0
+[0.7.0]: https://github.com/mmedabo/AIAgentFirewall/releases/tag/v0.7.0
+[0.6.0]: https://github.com/mmedabo/AIAgentFirewall/releases/tag/v0.6.0
+[0.5.0]: https://github.com/mmedabo/AIAgentFirewall/releases/tag/v0.5.0
+[0.4.0]: https://github.com/mmedabo/AIAgentFirewall/releases/tag/v0.4.0
+[0.3.0]: https://github.com/mmedabo/AIAgentFirewall/releases/tag/v0.3.0
+[0.2.0]: https://github.com/mmedabo/AIAgentFirewall/releases/tag/v0.2.0
+[0.1.0]: https://github.com/mmedabo/AIAgentFirewall/releases/tag/v0.1.0

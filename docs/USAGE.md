@@ -8,7 +8,7 @@ A task-oriented cookbook for every command. For the big picture see the
 ```bash
 pip install AIAgentFirewall        # from PyPI (once published); import stays `agentfirewall`
 # or from source:
-git clone https://github.com/mmedabo/agentfirewall && cd agentfirewall && pip install -e .
+git clone https://github.com/mmedabo/AIAgentFirewall && cd AIAgentFirewall && pip install -e .
 ```
 
 Installs the `afw` command (alias `agentfirewall`). Or run without installing:

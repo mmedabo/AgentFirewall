@@ -2,7 +2,7 @@
 
 **A security firewall for AI agents, skills, and MCP servers. Scan before you install.**
 
-[![CI](https://github.com/mmedabo/agentfirewall/actions/workflows/ci.yml/badge.svg)](https://github.com/mmedabo/agentfirewall/actions/workflows/ci.yml)
+[![CI](https://github.com/mmedabo/AIAgentFirewall/actions/workflows/ci.yml/badge.svg)](https://github.com/mmedabo/AIAgentFirewall/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
 [![Version](https://img.shields.io/badge/version-1.3.2-brightgreen.svg)](CHANGELOG.md)
@@ -72,8 +72,8 @@ full mapping and [`docs/ROADMAP.md`](docs/ROADMAP.md) for where this is going.
 ```bash
 pip install AIAgentFirewall        # from PyPI
 # or, from source:
-git clone https://github.com/mmedabo/agentfirewall
-cd agentfirewall && pip install -e .
+git clone https://github.com/mmedabo/AIAgentFirewall
+cd AIAgentFirewall && pip install -e .
 ```
 
 > **Names:** the PyPI package is **`AIAgentFirewall`**, the import module is
@@ -418,7 +418,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: mmedabo/agentfirewall@v1.3.1
+      - uses: mmedabo/AIAgentFirewall@v1.3.2
         with:
           path: ./skills
           args: --strict          # optional: block on MEDIUM+ ; or --format sarif
@@ -429,14 +429,14 @@ without failing). See [`action.yml`](action.yml) for all inputs.
 
 ## Documentation
 
-**📖 Start with the docs site → https://mmedabo.github.io/AgentFirewall/** — three
+**📖 Start with the docs site → https://mmedabo.github.io/AIAgentFirewall/** — three
 layers, so you can stop at the depth you need.
 
 | Layer | Page | For whom |
 |---|---|---|
-| **01 · Overview** | [Start here](https://mmedabo.github.io/AgentFirewall/) | Plain-English intro — what this is and why it matters, no jargon |
-| **02 · Features** | [Feature guide](https://mmedabo.github.io/AgentFirewall/features.html) | Every capability: why it's needed, use cases, honest pros **and cons** |
-| **03 · Reference** | [Full reference](https://mmedabo.github.io/AgentFirewall/reference.html) | Architecture, all commands/flags, the full detection catalogue, framework glossary |
+| **01 · Overview** | [Start here](https://mmedabo.github.io/AIAgentFirewall/) | Plain-English intro — what this is and why it matters, no jargon |
+| **02 · Features** | [Feature guide](https://mmedabo.github.io/AIAgentFirewall/features.html) | Every capability: why it's needed, use cases, honest pros **and cons** |
+| **03 · Reference** | [Full reference](https://mmedabo.github.io/AIAgentFirewall/reference.html) | Architecture, all commands/flags, the full detection catalogue, framework glossary |
 
 And the Markdown references:
 
