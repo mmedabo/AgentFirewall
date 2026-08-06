@@ -29,6 +29,14 @@ from .models import Artifact, Finding, Severity
 _DATA_DIR = os.path.join(os.path.dirname(__file__), "data", "intel")
 _USER_DIR = os.path.expanduser("~/.config/agentfirewall/intel")
 
+# The bundled seed is an *illustrative* feed for the example artifacts and docs
+# (it deliberately uses RFC-6761 reserved names like ``evil.example``), not real
+# threat intelligence. It ships so the demos can be run with ``--intel`` but is
+# NOT loaded by default: a scanner must not assert fabricated indicators as
+# "known-malicious" against arbitrary user code. Point ``--intel`` at a real
+# feed, or drop files into ``~/.config/agentfirewall/intel``.
+SEED_PATH = os.path.join(_DATA_DIR, "seed.json")
+
 # Reuse the homoglyph map for name normalization (kept local to avoid a cycle).
 _HOMOGLYPHS = {
     "0": "o", "1": "l", "3": "e", "5": "s", "$": "s", "@": "a",
@@ -95,10 +103,13 @@ class ThreatIntel:
 
     @classmethod
     def default(cls, extra_paths: Iterable[str] = ()) -> "ThreatIntel":
-        """Bundled seed + user config dir + any explicit paths."""
+        """User config dir + any explicit ``--intel`` paths.
+
+        The bundled demo seed is intentionally *not* loaded here -- see
+        :data:`SEED_PATH`. Real indicators come from the user's own feeds, so a
+        default scan never claims a fabricated placeholder as known-malicious.
+        """
         paths: list[str] = []
-        if os.path.isdir(_DATA_DIR):
-            paths.append(_DATA_DIR)
         if os.path.isdir(_USER_DIR):
             paths.append(_USER_DIR)
         paths.extend(extra_paths)

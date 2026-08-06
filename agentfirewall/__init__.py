@@ -9,7 +9,7 @@ from .models import Artifact, Finding, ScannedFile, ScanResult, Severity, Verdic
 from .policy import Policy
 from .scanner import Scanner
 
-__version__ = "1.3.2"
+__version__ = "1.3.3"
 
 __all__ = [
     "Scanner",

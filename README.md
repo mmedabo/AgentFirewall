@@ -5,7 +5,7 @@
 [![CI](https://github.com/mmedabo/AIAgentFirewall/actions/workflows/ci.yml/badge.svg)](https://github.com/mmedabo/AIAgentFirewall/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
-[![Version](https://img.shields.io/badge/version-1.3.2-brightgreen.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.3.3-brightgreen.svg)](CHANGELOG.md)
 
 The AI ecosystem is exploding with shareable **agents**, **skills**, **plugins**,
 and **MCP servers** — and, just like npm packages or browser extensions, most of
@@ -418,7 +418,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: mmedabo/AIAgentFirewall@v1.3.2
+      - uses: mmedabo/AIAgentFirewall@v1.3.3
         with:
           path: ./skills
           args: --strict          # optional: block on MEDIUM+ ; or --format sarif

@@ -59,9 +59,10 @@ The "threat-intel + segmentation" layer.
   opts out. Every scan reports the tier and provenance summary.
 - **Threat-intel / IoC feeds** (`AFW-IOC-*`): match artifact name, file SHA-256,
   contacted domains and signer identity against pluggable, **offline-by-default**
-  feeds (JSON or `names.txt`/`domains.txt`/`hashes.txt`/`signers.txt`). A bundled
-  seed ships as a starting point; add your own with `--intel <path>` or
-  `~/.config/agentfirewall/intel/`.
+  feeds (JSON or `names.txt`/`domains.txt`/`hashes.txt`/`signers.txt`). No
+  fabricated indicators are active by default; add your own with `--intel <path>`
+  or `~/.config/agentfirewall/intel/`. A bundled seed ships as an illustrative
+  demo feed (opt in with `--intel`), not real threat intelligence.
 
 ## ✅ Phase 4 — Runtime firewall (shipped)
 

@@ -49,7 +49,7 @@ agentfirewall/
   web/
     server.py      stdlib HTTP server + token-guarded JSON API (afw serve)
     index.html     self-contained SPA
-  data/intel/      bundled seed IoC feed
+  data/intel/      illustrative demo IoC feed (opt-in via --intel, not default)
 ```
 
 ## The vocabulary (`models.py`)

@@ -44,17 +44,32 @@ SECRETS = PatternRule(
         ),
         compile_sig(
             "AFW-SEC-003", "Dumps environment variables", S.HIGH,
-            r"\b(printenv|env)\b\s*(\||>|$)|process\.env\b(?!\.[A-Za-z])|"
-            r"os\.environ\b(?!\s*\.get\(\s*['\"][A-Z_]+['\"]\s*\)\s*$)",
+            # Enumerating the WHOLE environment is the threat -- not reading one
+            # variable (``process.env[key]``), not mentioning ``.env``. Require an
+            # actual whole-env dump/iterate/serialize form.
+            r"os\.environ\s*(?:\.(?:items|keys|values|copy)\s*\(|(?=\)))"
+            r"|dict\s*\(\s*os\.environ\s*\)"
+            r"|for\s+\w+\s+in\s+os\.environ\b"
+            r"|(?:print|json\.dumps|pprint)\s*\(\s*os\.environ\b"
+            r"|\.\.\.process\.env\b"
+            r"|Object\.(?:keys|entries|values|assign)\s*\(\s*process\.env\b"
+            r"|JSON\.stringify\s*\(\s*process\.env\b"
+            r"|console\.log\s*\(\s*process\.env\s*\)"
+            r"|(?:^|[;&|]|\$\()\s*(?:printenv|env)\s*(?:\||>|$)",
             "Reads the whole environment, which usually holds API keys and tokens.",
             "Read only the specific variables you need, not the entire environment.",
         ),
         compile_sig(
             "AFW-SEC-004", "Targets provider API keys", S.HIGH,
-            r"ANTHROPIC_API_KEY|OPENAI_API_KEY|AWS_SECRET_ACCESS_KEY|"
+            # Reading the VALUE of a provider secret is the threat -- not a config
+            # allow-list (``"passThroughEnv": ["GITHUB_TOKEN"]``) or prose that
+            # names the variable. Require an env-read prefix immediately before it.
+            r"(?:process\.env\.|process\.env\[\s*['\"]|os\.environ\[\s*['\"]|"
+            r"os\.getenv\(\s*['\"]|getenv\(\s*['\"]|ENV\[\s*['\"]|\$\{?\s*)"
+            r"(?:ANTHROPIC_API_KEY|OPENAI_API_KEY|AWS_SECRET_ACCESS_KEY|"
             r"AWS_ACCESS_KEY_ID|GITHUB_TOKEN|GH_TOKEN|SLACK_TOKEN|HF_TOKEN|"
-            r"GOOGLE_API_KEY|STRIPE_SECRET_KEY",
-            "References a known secret environment variable by name.",
+            r"GOOGLE_API_KEY|STRIPE_SECRET_KEY)",
+            "Reads the value of a known provider secret from the environment.",
             "Do not read provider secrets from within an installed agent.",
         ),
         compile_sig(
