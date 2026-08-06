@@ -126,9 +126,15 @@ afw scan ./skill --verify-signatures --identity maintainer@example.com
 against IoC lists (offline by default):
 
 ```bash
-afw scan ./skill --intel ./my-iocs/               # add feeds (JSON or txt)
-afw scan ./skill --no-intel                        # disable the bundled seed
+afw scan ./skill --intel ./my-iocs/               # add your feeds (JSON or txt)
+afw scan ./skill --intel agentfirewall/data/intel/seed.json   # run the demo feed
+afw scan ./skill --no-intel                        # skip IoC matching entirely
 ```
+
+No fabricated indicators are active by default: real indicators come from your own
+`--intel` feeds or `~/.config/agentfirewall/intel/`. The bundled
+`seed.json` is an **illustrative demo feed** (it uses RFC-reserved placeholders like
+`evil.example`); pass it with `--intel` to see the example artifacts trip an IoC hit.
 
 Feed formats — JSON `{"names":[],"domains":[],"hashes":[],"signers":[]}`, or plain
 text files named `names.txt` / `domains.txt` / `hashes.txt` / `signers.txt`. Drop

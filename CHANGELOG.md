@@ -6,6 +6,45 @@ All notable changes to AgentFirewall are documented here. This project follows
 
 ## [Unreleased]
 
+## [1.3.3] — Precision, continued
+
+Continues the precision work from 1.3.2, driven by dogfooding the scanner against
+the same real ~1000-file open-source TypeScript application. Every fix below
+eliminates a class of false positive that was reported from an actual scan while
+keeping the real detection it guards. No coverage is lost — each change is locked
+in by `tests/test_precision.py`.
+
+- **Reading one env var is not dumping the environment.** `AFW-SEC-003` flagged any
+  `process.env` / `os.environ` reference — so ordinary indexing like
+  `process.env[key]`, and even the bare string `.env`, read as "dumps the whole
+  environment." It now requires a genuine whole-environment form:
+  `os.environ.items()/keys()/values()/copy()`, `dict(os.environ)`,
+  `for … in os.environ`, `print/json.dumps(os.environ)`, `{...process.env}`,
+  `Object.keys/entries/values/assign(process.env)`, `JSON.stringify(process.env)`,
+  `console.log(process.env)`, or a bare `printenv`/`env` command.
+- **Naming a secret variable is not reading its value.** `AFW-SEC-004` matched
+  secret names (`GITHUB_TOKEN`, `ANTHROPIC_API_KEY`, …) anywhere — including Turbo's
+  `"globalPassThroughEnv": ["GITHUB_TOKEN"]`, GitHub Actions `secrets.GITHUB_TOKEN`,
+  and prose in docs. It now requires an env-read prefix immediately before the name
+  (`process.env.`, `process.env['`, `os.environ['`, `os.getenv('`, `getenv('`,
+  `ENV['`, or `${`).
+- **Prompt-injection prose no longer trips `AFW-INJ-001`.** "requests microphone
+  permission when opened without permission" now needs the possessor word
+  (`without the user's/their/… consent`), and the secret-exfiltration pattern keeps
+  the secret object close to the verb and drops the over-broad bare word `token`
+  (so "client-upload token handshake" is silent; `access token` / `auth token` still
+  match).
+- **Benign "always read the docs" no longer trips tool-poisoning.** `AFW-TPZ-002`
+  now fires on an imperative read only when its object is sensitive (`~/.ssh`,
+  `.env`, `.aws`, an API key/secret/credential), not on "always read the bundled
+  docs." The over-broad `config` object was removed.
+- **Fabricated demo IoCs are no longer active by default.** The bundled seed uses
+  RFC-6761 reserved placeholders (`evil.example`); asserting those as
+  "known-malicious" against arbitrary user code is a false claim. `ThreatIntel.default()`
+  no longer auto-loads the seed — real indicators come from your own `--intel` feeds
+  or `~/.config/agentfirewall/intel`. The seed still ships as an example
+  (`agentfirewall/data/intel/seed.json`) for the demos.
+
 ## [1.3.2] — Signature precision
 
 Fixes two false-positive classes found by scanning a real ~1000-file open-source
@@ -193,7 +232,8 @@ package to Production/Stable, and is the first tagged/published version.
 - `scan` / `verify` / `install` / `watch` / `rules`; ALLOW/WARN/BLOCK policy;
   text / JSON / SARIF output. MIT licensed, zero required dependencies.
 
-[Unreleased]: https://github.com/mmedabo/AIAgentFirewall/compare/v1.3.2...HEAD
+[Unreleased]: https://github.com/mmedabo/AIAgentFirewall/compare/v1.3.3...HEAD
+[1.3.3]: https://github.com/mmedabo/AIAgentFirewall/releases/tag/v1.3.3
 [1.3.2]: https://github.com/mmedabo/AIAgentFirewall/releases/tag/v1.3.2
 [1.3.1]: https://github.com/mmedabo/AIAgentFirewall/releases/tag/v1.3.1
 [1.3.0]: https://github.com/mmedabo/AIAgentFirewall/releases/tag/v1.3.0

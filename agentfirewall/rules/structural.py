@@ -26,10 +26,20 @@ _INJECTION_PATTERNS = [
      "Tells the model to disregard its system prompt."),
     (r"do\s+not\s+(tell|inform|mention|reveal|show)\s+(the\s+)?(user|human|operator)",
      "Instructs the agent to hide its actions from the user."),
-    (r"without\s+(the\s+)?(user'?s?\s+)?(knowledge|consent|permission|awareness)",
+    # Require the possessor word ("user"/"their"/...) so "requests microphone
+    # permission when opened without permission" (a feature description) is not
+    # read as "act without the user's permission".
+    (r"without\s+(?:the\s+)?(?:user'?s?|their|human'?s?|operator'?s?)\s+"
+     r"(knowledge|consent|permission|awareness|approval)",
      "Instructs the agent to act without user consent."),
-    (r"(send|exfiltrate|upload|post|leak|forward)\s+[^\n]{0,60}"
-     r"(api[_\s-]?key|secret|token|password|credential|\.env|ssh\s+key)",
+    # Keep the secret object close to the verb and drop the generic word
+    # "token" (which appears in innocuous phrases like "client-upload token
+    # handshake"); "access token"/"auth token" still match explicitly.
+    (r"\b(send|exfiltrate|upload|post|leak|forward|transmit)\s+"
+     r"(?:the\s+|your\s+|all\s+|my\s+)?(?:[\w'\".-]+\s+){0,2}"
+     r"(api[_\s-]?key|secret\s+key|secret\b|password|credential|private\s+key|"
+     r"\.env\b|ssh\s+key|access[_\s-]?token|auth[_\s-]?token|mnemonic|"
+     r"seed\s+phrase)",
      "Instructs the agent to send secrets to a third party."),
     (r"you\s+are\s+now\s+(a\s+)?(dan|developer\s+mode|unrestricted|jailbroken)",
      "Classic jailbreak persona-switch."),
@@ -324,10 +334,16 @@ class ToolPoisoningRule(Rule):
     _MARKERS = re.compile(
         r"<\s*(important|system|secret|admin|instructions?)\s*>|"
         r"\bbefore\s+(using|calling|invoking)\s+this\s+tool\b|"
-        r"\b(you\s+must|always)\s+(first\s+)?(read|open|send|include|cat|fetch)\b|"
+        # An imperative read/send is only a poisoning tell when its object is
+        # sensitive -- "always read the bundled docs" is benign, "always read
+        # ~/.ssh" is not.
+        r"\b(?:you\s+must|always|be\s+sure\s+to|make\s+sure\s+to)\s+(?:first\s+)?"
+        r"(?:read|open|send|include|cat|fetch|attach|exfiltrate|transmit)\b"
+        r"[^\n]{0,40}(~/\.|/etc/|\.env\b|\.ssh\b|\.aws\b|api[_\s-]?key|secret|"
+        r"token|password|credential|mnemonic|private\s+key)|"
         r"\bdo\s+not\s+(tell|mention|inform|reveal)\b|"
-        r"\b(read|include|attach|send)\b[^\n]{0,40}(~/\.|/etc/|\.env|\.ssh|api[_\s-]?key|"
-        r"mnemonic|config)\b|"
+        r"\b(read|include|attach|send)\b[^\n]{0,40}(~/\.|/etc/|\.env\b|\.ssh\b|"
+        r"api[_\s-]?key|mnemonic)\b|"
         r"\bsidenote\b[^\n]{0,20}\bassistant\b",
         re.IGNORECASE,
     )

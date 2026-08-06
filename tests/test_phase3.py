@@ -81,9 +81,19 @@ def test_block_threshold_helper():
 
 # ------------------------------- threat intel ------------------------------ #
 def test_intel_domain_match_on_malicious_example():
-    scanner = Scanner(intel=ThreatIntel.default())
+    # The bundled seed is a demo feed, not loaded by default -- point --intel at
+    # it explicitly, as the demo docs do.
+    from agentfirewall.intel import SEED_PATH
+    scanner = Scanner(intel=ThreatIntel.default([SEED_PATH]))
     result = scanner.scan_path(os.path.join(EXAMPLES, "malicious-skill"))
     assert "AFW-IOC-003" in {f.rule_id for f in result.findings}
+
+
+def test_default_intel_does_not_load_fabricated_seed():
+    """A default scan must not assert the reserved demo domain as malicious."""
+    scanner = Scanner(intel=ThreatIntel.default())
+    result = scanner.scan_path(os.path.join(EXAMPLES, "malicious-skill"))
+    assert "AFW-IOC-003" not in {f.rule_id for f in result.findings}
 
 
 def test_intel_bad_name(tmp_path):
