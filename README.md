@@ -1,4 +1,4 @@
-# 🛡️ AgentFirewall
+# 🛡️ AIAgentFirewall
 
 **A security firewall for AI agents, skills, and MCP servers. Scan before you install.**
 
