@@ -6,7 +6,7 @@ detections, better heuristics, docs, and bug fixes are all welcome.
 ## Getting set up
 
 ```bash
-git clone https://github.com/mmedabo/agentfirewall
+git clone https://github.com/mmedabo/AIAgentFirewall
 cd agentfirewall
 pip install -e ".[dev]"
 pytest
